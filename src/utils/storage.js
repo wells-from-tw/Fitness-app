@@ -164,3 +164,34 @@ export function saveWater(dateKey, cups) {
   log[dateKey] = cups;
   localStorage.setItem(WATER_KEY, JSON.stringify(log));
 }
+
+/** Barcode cache: { [barcode]: { name, calories, carbs, protein, fat, savedAt } } */
+const BARCODE_CACHE_KEY = 'wisefitness_barcode_cache';
+
+export function loadBarcodeCache() {
+  const raw = localStorage.getItem(BARCODE_CACHE_KEY);
+  return raw ? JSON.parse(raw) : {};
+}
+
+export function getBarcodeEntry(barcode) {
+  return loadBarcodeCache()[barcode] ?? null;
+}
+
+export function saveBarcodeEntry(barcode, food) {
+  const cache = loadBarcodeCache();
+  cache[barcode] = {
+    name:     food.name,
+    calories: food.calories,
+    carbs:    food.carbs,
+    protein:  food.protein,
+    fat:      food.fat,
+    savedAt:  new Date().toISOString(),
+  };
+  localStorage.setItem(BARCODE_CACHE_KEY, JSON.stringify(cache));
+}
+
+export function deleteBarcodeEntry(barcode) {
+  const cache = loadBarcodeCache();
+  delete cache[barcode];
+  localStorage.setItem(BARCODE_CACHE_KEY, JSON.stringify(cache));
+}

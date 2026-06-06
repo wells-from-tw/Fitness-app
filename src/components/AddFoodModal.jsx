@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { estimateNutrition, estimateNutritionFromImage, parseMultipleFoods, loadApiKey } from '../utils/ai';
+import { getBarcodeEntry, saveBarcodeEntry } from '../utils/storage';
 import { loadFavorites, saveFavorite, removeFavorite, loadAllDays } from '../utils/storage';
 
 function getRecentFoods() {
@@ -599,11 +600,12 @@ async function lookupBarcode(barcode) {
 function BarcodeTab({ onFound, hasKey }) {
   const videoRef    = useRef(null);
   const readerRef   = useRef(null);
-  const [phase, setPhase]           = useState('init');   // init|scanning|lookup|ai-fallback|error
+  const [phase, setPhase]           = useState('init');   // init|scanning|lookup|cached|ai-fallback|error
   const [barcode, setBarcode]       = useState('');
   const [errMsg,  setErrMsg]        = useState('');
-  const [fallbackName, setFallbackName] = useState('');   // pre-filled from OFF product name
-  const [aiEstState, setAiEstState] = useState('idle');   // idle|loading|error
+  const [cachedFood, setCachedFood] = useState(null);     // hit from local cache
+  const [fallbackName, setFallbackName] = useState('');
+  const [aiEstState, setAiEstState] = useState('idle');
   const [aiEstError, setAiEstError] = useState('');
 
   const stop = useCallback(() => {
@@ -650,13 +652,25 @@ function BarcodeTab({ onFound, hasKey }) {
             cancelled = true;
             const code = result.getText();
             setBarcode(code);
-            setPhase('lookup');
             stop();
+
+            // 1️⃣ Check local cache first
+            const cached = getBarcodeEntry(code);
+            if (cached) {
+              setCachedFood(cached);
+              setPhase('cached');
+              return;
+            }
+
+            // 2️⃣ Query Open Food Facts
+            setPhase('lookup');
             try {
               const info = await lookupBarcode(code);
               if (info.found && info.hasNutrition) {
-                // ✅ Full data → done
-                onFound({ name: info.name, calories: info.calories, carbs: info.carbs, protein: info.protein, fat: info.fat });
+                // ✅ Full data → save to cache and done
+                const food = { name: info.name, calories: info.calories, carbs: info.carbs, protein: info.protein, fat: info.fat };
+                saveBarcodeEntry(code, food);
+                onFound(food);
               } else {
                 // ⚠️ Not found or no nutrition → AI fallback
                 setFallbackName(info.name || '');
@@ -685,6 +699,7 @@ function BarcodeTab({ onFound, hasKey }) {
     setAiEstError('');
     try {
       const result = await estimateNutrition(fallbackName.trim());
+      saveBarcodeEntry(barcode, result); // 存入快取，下次直接用
       onFound(result);
     } catch (e) {
       setAiEstState('error');
@@ -724,6 +739,43 @@ function BarcodeTab({ onFound, hasKey }) {
 
       {phase === 'scanning' && (
         <p className="text-xs text-gray-400 text-center">將條碼對準框框內，自動偵測</p>
+      )}
+
+      {/* ── Cached hit UI ── */}
+      {phase === 'cached' && cachedFood && (
+        <div className="w-full flex flex-col gap-3">
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-2xl px-4 py-3 flex items-start gap-2">
+            <span className="text-lg">⚡</span>
+            <div>
+              <p className="text-sm font-semibold text-green-700 dark:text-green-300">從你的私人資料庫找到了！</p>
+              <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">條碼：{barcode}</p>
+            </div>
+          </div>
+          <div className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-4 py-3">
+            <p className="text-sm font-bold text-gray-800 dark:text-gray-100 mb-2">{cachedFood.name}</p>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              {[
+                { label: '卡路里', value: cachedFood.calories, unit: 'kcal', color: 'text-blue-600' },
+                { label: '碳水',   value: cachedFood.carbs,    unit: 'g',    color: 'text-amber-600' },
+                { label: '蛋白質', value: cachedFood.protein,  unit: 'g',    color: 'text-blue-600' },
+                { label: '脂肪',   value: cachedFood.fat,      unit: 'g',    color: 'text-rose-500' },
+              ].map(({ label, value, unit, color }) => (
+                <div key={label} className="bg-white dark:bg-[#111] rounded-xl p-2">
+                  <p className={`text-base font-bold ${color}`}>{value}</p>
+                  <p className="text-xs text-gray-400">{unit}</p>
+                  <p className="text-xs text-gray-500">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onFound(cachedFood)}
+            className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-2xl text-sm transition-all active:scale-95"
+          >
+            加入餐點
+          </button>
+        </div>
       )}
 
       {/* ── AI Fallback UI ── */}
