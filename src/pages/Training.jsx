@@ -133,9 +133,9 @@ export default function Training() {
   }, [sets]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-gray-950 pb-28">
+    <div className="min-h-screen bg-[#f8f8f8] dark:bg-[#0a0a0a] pb-28">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-900 px-4 pt-12 pb-4 shadow-sm">
+      <div className="bg-[#f8f8f8]/90 dark:bg-[#0a0a0a]/95 backdrop-blur-md sticky top-0 z-30 border-b border-gray-100 dark:border-[#1a1a1a] px-4 pt-12 pb-4">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">🏋️ 訓練</h1>
@@ -167,13 +167,13 @@ export default function Training() {
       <div className="max-w-lg mx-auto px-4 mt-4 flex flex-col gap-4">
 
         {/* Muscle Heatmap */}
-        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-4">
+        <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-4">
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">今日肌群熱力圖</h2>
           <MuscleHeatmap muscleIntensities={muscleIntensities} />
         </div>
 
         {/* Today's Log */}
-        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-4">
+        <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">今日運動</h2>
             <button
@@ -201,7 +201,7 @@ export default function Training() {
 
         {/* Add Exercise Panel */}
         {showAdd && (
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-4 flex flex-col gap-4">
+          <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-4 flex flex-col gap-4">
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">新增運動</h2>
 
             {/* Layout C: library (left) + form (right) on ≥sm, stacked on mobile */}
@@ -375,12 +375,12 @@ function ExerciseLogItem({ entry, onRemove }) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{entry.name}</span>
           {entry.type === 'cardio' && (
-            <span className="text-xs text-gray-400 bg-white dark:bg-gray-700 px-2 py-0.5 rounded-full">
+            <span className="text-xs text-gray-400 bg-gray-100 dark:bg-[#1e1e1e] px-2 py-0.5 rounded-full">
               {entry.duration} 分鐘
             </span>
           )}
           {entry.type === 'strength' && entry.sets?.length > 0 && (
-            <span className="text-xs text-gray-400 bg-white dark:bg-gray-700 px-2 py-0.5 rounded-full">
+            <span className="text-xs text-gray-400 bg-gray-100 dark:bg-[#1e1e1e] px-2 py-0.5 rounded-full">
               {entry.sets.length} 組
             </span>
           )}

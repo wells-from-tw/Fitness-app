@@ -95,10 +95,10 @@ export default function History() {
   const monthMin  = monthCals.length > 0 ? Math.min(...monthCals) : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-slate-50 dark:from-gray-900 dark:to-gray-950">
-      <header className="bg-white/80 dark:bg-gray-900/90 backdrop-blur-md sticky top-0 z-30 border-b border-blue-50 dark:border-gray-800 shadow-sm">
+    <div className="min-h-screen bg-[#f8f8f8] dark:bg-[#0a0a0a]">
+      <header className="bg-[#f8f8f8]/90 dark:bg-[#0a0a0a]/95 backdrop-blur-md sticky top-0 z-30 border-b border-gray-100 dark:border-[#1a1a1a]">
         <div className="max-w-lg mx-auto px-5 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">歷史記錄</h1>
+          <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">歷史記錄</h1>
           <button
             onClick={() => setSearchOpen(true)}
             className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
@@ -110,7 +110,7 @@ export default function History() {
       <main className="max-w-lg mx-auto px-4 pt-5 pb-28 flex flex-col gap-4">
 
         {/* Week navigation */}
-        <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-2xl shadow-sm px-5 py-3">
+        <div className="flex items-center justify-between bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] px-5 py-3">
           <button
             onClick={() => setWeekOffset(w => w - 1)}
             className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-xl leading-none"
@@ -137,7 +137,7 @@ export default function History() {
             { label: '連續記錄',  value: `${logStreak}`,                   unit: '天',   color: 'text-orange-500' },
             { label: '達標天數',  value: `${goalDays}/${recorded.length}`, unit: '天',   color: 'text-green-500'  },
           ].map(({ label, value, unit, color }) => (
-            <div key={label} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 text-center">
+            <div key={label} className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-4 text-center">
               <p className={`text-xl font-bold ${color}`}>{value}<span className="text-xs font-normal text-gray-400 ml-1">{unit}</span></p>
               <p className="text-xs text-gray-400 mt-0.5">{label}</p>
             </div>
@@ -169,8 +169,8 @@ export default function History() {
         </button>
 
         {/* Calorie bar chart */}
-        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">卡路里趨勢</h2>
+        <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
+          <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest mb-4">卡路里趨勢</h2>
           <div className="flex items-end justify-between gap-2" style={{ height: 120 }}>
             {stats.map(({ key, calories }) => {
               const isToday  = key === todayKey;
@@ -203,8 +203,8 @@ export default function History() {
         <CalendarHeatmap allDays={allDays} goals={goals} />
 
         {/* Monthly stats */}
-        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">
+        <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
+          <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest mb-4">
             {now.getMonth() + 1} 月統計
           </h2>
           {monthRecorded === 0 ? (
@@ -336,9 +336,9 @@ function DailyList({ stats, allDays, goals, todayKey }) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-50 dark:border-gray-700">
-        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">每日明細</h2>
+        <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest">每日明細</h2>
         <p className="text-xs text-gray-400 mt-0.5">點擊任一天可展開並補登／刪除食物</p>
       </div>
 
@@ -511,9 +511,9 @@ function CalendarHeatmap({ allDays, goals }) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
+    <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest">
           {month + 1} 月記錄熱力圖
         </h2>
         <div className="flex items-center gap-1.5 text-xs text-gray-400">
@@ -687,9 +687,9 @@ function WeightChart({ days, weightLog }) {
 
   if (weights.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
+      <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">體重趨勢</h2>
+          <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest">體重趨勢</h2>
           <ViewToggle show30={show30} setShow30={setShow30} />
         </div>
         <p className="text-center text-gray-300 dark:text-gray-600 text-sm py-6">
@@ -747,9 +747,9 @@ function WeightChart({ days, weightLog }) {
     .filter(({ i }) => i % step === 0 || i === displayKeys.length - 1);
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
+    <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">體重趨勢</h2>
+        <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest">體重趨勢</h2>
         <div className="flex items-center gap-2">
           {weights.length >= 2 && (
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${

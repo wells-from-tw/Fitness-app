@@ -150,19 +150,19 @@ export default function Settings() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-slate-50 dark:from-gray-900 dark:to-gray-950">
-      <header className="bg-white/80 dark:bg-gray-900/90 backdrop-blur-md sticky top-0 z-30 border-b border-blue-50 dark:border-gray-800 shadow-sm">
+    <div className="min-h-screen bg-[#f8f8f8] dark:bg-[#0a0a0a]">
+      <header className="bg-[#f8f8f8]/90 dark:bg-[#0a0a0a]/95 backdrop-blur-md sticky top-0 z-30 border-b border-gray-100 dark:border-[#1a1a1a]">
         <div className="max-w-lg mx-auto px-5 py-4">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">設定</h1>
-          <p className="text-xs text-gray-400 mt-0.5">個人資料與每日目標</p>
+          <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">設定</h1>
+          <p className="text-[11px] text-gray-400 tracking-wide mt-0.5">個人資料與每日目標</p>
         </div>
       </header>
 
       <main className="max-w-lg mx-auto px-4 pt-5 pb-28 flex flex-col gap-4">
 
         {/* ── 個人資料 ── */}
-        <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">個人資料</h2>
+        <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
+          <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest mb-4">個人資料</h2>
 
           {/* Gender */}
           <div className="mb-4">
@@ -173,7 +173,7 @@ export default function Settings() {
                   className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors ${
                     profile.gender === v
                       ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      : 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[#222]'
                   }`}>
                   {label}
                 </button>
@@ -185,29 +185,29 @@ export default function Settings() {
           <div className="grid grid-cols-3 gap-3 mb-4">
             <div>
               <label className="text-xs text-gray-500 mb-1.5 block">年齡</label>
-              <div className="flex items-center border border-gray-200 dark:border-gray-600 rounded-xl overflow-hidden dark:bg-gray-700">
+              <div className="flex items-center border border-gray-200 dark:border-[#2a2a2a] rounded-xl overflow-hidden dark:bg-[#1a1a1a]">
                 <input type="number" min="10" max="99" value={profile.age}
                   onChange={e => setProf('age', Number(e.target.value))}
-                  className="flex-1 px-2 py-2.5 text-sm text-center focus:outline-none w-0 dark:bg-gray-700 dark:text-gray-100"/>
-                <span className="px-2 text-xs text-gray-400 bg-gray-50 dark:bg-gray-600 h-full flex items-center border-l border-gray-200 dark:border-gray-600">歲</span>
+                  className="flex-1 px-2 py-2.5 text-sm text-center focus:outline-none w-0 dark:bg-[#1a1a1a] dark:text-gray-100"/>
+                <span className="px-2 text-xs text-gray-400 bg-gray-50 dark:bg-[#222] h-full flex items-center border-l border-gray-200 dark:border-[#2a2a2a]">歲</span>
               </div>
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1.5 block">身高</label>
-              <div className="flex items-center border border-gray-200 dark:border-gray-600 rounded-xl overflow-hidden dark:bg-gray-700">
+              <div className="flex items-center border border-gray-200 dark:border-[#2a2a2a] rounded-xl overflow-hidden dark:bg-[#1a1a1a]">
                 <input type="number" min="100" max="250" value={profile.height}
                   onChange={e => setProf('height', Number(e.target.value))}
-                  className="flex-1 px-2 py-2.5 text-sm text-center focus:outline-none w-0 dark:bg-gray-700 dark:text-gray-100"/>
-                <span className="px-2 text-xs text-gray-400 bg-gray-50 dark:bg-gray-600 h-full flex items-center border-l border-gray-200 dark:border-gray-600">cm</span>
+                  className="flex-1 px-2 py-2.5 text-sm text-center focus:outline-none w-0 dark:bg-[#1a1a1a] dark:text-gray-100"/>
+                <span className="px-2 text-xs text-gray-400 bg-gray-50 dark:bg-[#222] h-full flex items-center border-l border-gray-200 dark:border-[#2a2a2a]">cm</span>
               </div>
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1.5 block">體重</label>
-              <div className="flex items-center border border-gray-200 dark:border-gray-600 rounded-xl overflow-hidden dark:bg-gray-700">
+              <div className="flex items-center border border-gray-200 dark:border-[#2a2a2a] rounded-xl overflow-hidden dark:bg-[#1a1a1a]">
                 <input type="number" min="20" max="300" step="0.1" value={profile.weight ?? 65}
                   onChange={e => setProf('weight', Number(e.target.value))}
-                  className="flex-1 px-2 py-2.5 text-sm text-center focus:outline-none w-0 dark:bg-gray-700 dark:text-gray-100"/>
-                <span className="px-2 text-xs text-gray-400 bg-gray-50 dark:bg-gray-600 h-full flex items-center border-l border-gray-200 dark:border-gray-600">kg</span>
+                  className="flex-1 px-2 py-2.5 text-sm text-center focus:outline-none w-0 dark:bg-[#1a1a1a] dark:text-gray-100"/>
+                <span className="px-2 text-xs text-gray-400 bg-gray-50 dark:bg-[#222] h-full flex items-center border-l border-gray-200 dark:border-[#2a2a2a]">kg</span>
               </div>
             </div>
           </div>
@@ -220,8 +220,8 @@ export default function Settings() {
                 <button key={value} type="button" onClick={() => setProf('activity', value)}
                   className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm transition-colors ${
                     profile.activity === value
-                      ? 'bg-blue-50 border-2 border-blue-300 text-blue-700'
-                      : 'bg-gray-50 border-2 border-transparent text-gray-600 hover:bg-gray-100'
+                      ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-300 dark:border-blue-600 text-blue-700 dark:text-blue-400'
+                      : 'bg-gray-50 dark:bg-[#1a1a1a] border-2 border-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#222]'
                   }`}>
                   <span className="font-semibold">{label}</span>
                   <span className="text-xs opacity-60">{desc}</span>
@@ -239,8 +239,8 @@ export default function Settings() {
         </section>
 
         {/* ── BMI & TDEE ── */}
-        <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">BMI & 建議熱量</h2>
+        <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
+          <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest mb-4">BMI & 建議熱量</h2>
           <p className="text-xs text-gray-400 mb-4">依據個人資料與最近記錄的體重計算（Mifflin-St Jeor 公式）</p>
 
           <div className="grid grid-cols-3 gap-3 mb-4">
@@ -253,13 +253,13 @@ export default function Settings() {
               {bmiInfo && <p className={`text-xs font-semibold mt-0.5 ${bmiInfo.color}`}>{bmiInfo.label}</p>}
             </div>
             {/* BMR */}
-            <div className="bg-gray-50 rounded-2xl p-3 text-center">
+            <div className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl p-3 text-center">
               <p className="text-2xl font-bold text-gray-700">{Math.round(bmr)}</p>
               <p className="text-xs text-gray-500 font-medium mt-0.5">BMR</p>
               <p className="text-xs text-gray-400 mt-0.5">kcal/日</p>
             </div>
             {/* TDEE */}
-            <div className="bg-blue-50 rounded-2xl p-3 text-center">
+            <div className="bg-blue-50 dark:bg-[#0a1628] rounded-2xl p-3 text-center">
               <p className="text-2xl font-bold text-blue-600">{tdee}</p>
               <p className="text-xs text-gray-500 font-medium mt-0.5">TDEE</p>
               <p className="text-xs text-gray-400 mt-0.5">kcal/日</p>
@@ -304,7 +304,7 @@ export default function Settings() {
         <WaterGoalSection />
 
         {/* ── 快速套用 ── */}
-        <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
+        <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">快速套用</h2>
           <div className="grid grid-cols-3 gap-3">
             {PRESETS.map(p => (
@@ -319,7 +319,7 @@ export default function Settings() {
         </section>
 
         {/* ── 精細調整 ── */}
-        <section className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-5">
+        <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5 flex flex-col gap-5">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">精細調整</h2>
           {FIELDS.map(({ key, label, unit, min, max, step, color }) => {
             const c   = COLOR_MAP[color];
@@ -363,7 +363,7 @@ export default function Settings() {
         <ApiKeySection />
 
         {/* ── 資料管理 ── */}
-        <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
+        <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-lg">💾</span>
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">資料管理</h2>
@@ -379,7 +379,7 @@ export default function Settings() {
               📦 匯出備份 JSON
             </button>
             <button onClick={() => importRef.current?.click()}
-              className="flex-1 py-3 rounded-2xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-semibold transition-all active:scale-95">
+              className="flex-1 py-3 rounded-2xl bg-gray-100 dark:bg-[#1a1a1a] hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-semibold transition-all active:scale-95">
               📥 還原備份
             </button>
             <input ref={importRef} type="file" accept=".json" hidden onChange={handleImportJSON}/>
@@ -393,7 +393,7 @@ export default function Settings() {
 
           {/* CSV export */}
           <button onClick={handleExportCSV}
-            className="w-full py-3 rounded-2xl bg-gray-700 dark:bg-gray-600 hover:bg-gray-800 dark:hover:bg-gray-500 text-white text-sm font-semibold transition-all active:scale-95">
+            className="w-full py-3 rounded-2xl bg-gray-700 dark:bg-[#222] hover:bg-gray-800 dark:hover:bg-gray-500 text-white text-sm font-semibold transition-all active:scale-95">
             📊 匯出 CSV（Excel 分析用）
           </button>
         </section>
@@ -462,7 +462,7 @@ function TDEESuggestionSheet({ tdee, weight, onApply, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center" onClick={onClose}>
       <div
-        className="bg-white dark:bg-gray-800 rounded-t-3xl w-full max-w-lg p-6 pb-10"
+        className="bg-white dark:bg-[#111] rounded-t-3xl w-full max-w-lg p-6 pb-10"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-1">
@@ -509,7 +509,7 @@ function MacroRatioCard({ goals }) {
   const proteinPct = total > 0 ? Math.round((goals.protein * 4 / total) * 100) : 0;
   const fatPct     = total > 0 ? 100 - carbPct - proteinPct : 0;
   return (
-    <section className="bg-white rounded-3xl shadow-sm p-5">
+    <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
       <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">熱量來源比例</h2>
       <div className="flex h-4 rounded-full overflow-hidden gap-0.5 mb-4">
         <div className="bg-amber-400 transition-all duration-500" style={{ width: `${carbPct}%` }}/>
@@ -522,7 +522,7 @@ function MacroRatioCard({ goals }) {
           { label: '蛋白質', pct: proteinPct, kcal: goals.protein * 4, color: 'text-blue-500'  },
           { label: '脂肪',   pct: fatPct,     kcal: goals.fat     * 9, color: 'text-rose-400'  },
         ].map(({ label, pct, kcal, color }) => (
-          <div key={label} className="bg-gray-50 rounded-2xl p-3">
+          <div key={label} className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl p-3">
             <p className={`text-lg font-bold ${color}`}>{pct}%</p>
             <p className="text-xs text-gray-500 font-medium">{label}</p>
             <p className="text-xs text-gray-400">{kcal} kcal</p>
@@ -548,9 +548,9 @@ function WaterGoalSection() {
   const OPTIONS = [6, 7, 8, 9, 10, 12];
 
   return (
-    <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
+    <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">每日飲水目標</h2>
+        <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest">每日飲水目標</h2>
         {saved && <span className="text-xs text-green-500 font-semibold">✓ 已儲存</span>}
       </div>
       <div className="grid grid-cols-3 gap-2">
@@ -561,7 +561,7 @@ function WaterGoalSection() {
             className={`py-3 rounded-2xl text-sm font-semibold transition-all active:scale-95 flex flex-col items-center gap-0.5 ${
               goal === n
                 ? 'bg-cyan-500 text-white shadow-sm'
-                : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-cyan-50 dark:hover:bg-cyan-900/20'
+                : 'bg-gray-50 dark:bg-[#1a1a1a] text-gray-600 dark:text-gray-300 hover:bg-cyan-50 dark:hover:bg-cyan-900/20'
             }`}
           >
             <span>{n} 杯</span>
@@ -600,8 +600,8 @@ function MacroTrendChart() {
   const hasAny = entries.some(e => e.carbs !== null);
   if (!hasAny) {
     return (
-      <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
-        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">近 30 天三大營養素</h2>
+      <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
+        <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest mb-3">近 30 天三大營養素</h2>
         <p className="text-center text-gray-300 dark:text-gray-600 text-sm py-6">尚無飲食記錄</p>
       </section>
     );
@@ -645,8 +645,8 @@ function MacroTrendChart() {
   const goalY = toY(100);
 
   return (
-    <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
-      <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">近 30 天三大營養素</h2>
+    <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
+      <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest mb-4">近 30 天三大營養素</h2>
       <p className="text-xs text-gray-400 mb-3">以各自目標量的 % 顯示，100% 虛線＝達標</p>
 
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full overflow-visible" style={{ height: 100 }}>
@@ -727,9 +727,9 @@ function MealSplitSection({ totalCalories }) {
   }
 
   return (
-    <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
+    <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">每餐熱量分配</h2>
+        <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest">每餐熱量分配</h2>
         <button onClick={reset} className="text-xs text-blue-400 hover:text-blue-500">重設預設</button>
       </div>
       <p className="text-xs text-gray-400 mb-4">設定後首頁每餐標題會顯示「已吃 / 目標」kcal</p>
@@ -836,21 +836,21 @@ function WeightGoalSection({ currentWeight }) {
   }
 
   return (
-    <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
-      <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">體重目標</h2>
+    <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
+      <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest mb-4">體重目標</h2>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div>
           <label className="text-xs text-gray-500 mb-1.5 block">目標體重</label>
-          <div className="flex items-center border border-gray-200 dark:border-gray-600 rounded-xl overflow-hidden dark:bg-gray-700">
+          <div className="flex items-center border border-gray-200 dark:border-[#2a2a2a] rounded-xl overflow-hidden dark:bg-[#1a1a1a]">
             <input
               type="number" min="20" max="300" step="0.1"
               value={goal.target}
               onChange={e => { setGoal(p => ({ ...p, target: e.target.value })); setSaved(false); }}
               placeholder="65"
-              className="flex-1 px-3 py-2.5 text-sm text-center focus:outline-none w-0 dark:bg-gray-700 dark:text-gray-100"
+              className="flex-1 px-3 py-2.5 text-sm text-center focus:outline-none w-0 dark:bg-[#1a1a1a] dark:text-gray-100"
             />
-            <span className="px-2 text-xs text-gray-400 bg-gray-50 dark:bg-gray-600 h-full flex items-center border-l border-gray-200 dark:border-gray-600">kg</span>
+            <span className="px-2 text-xs text-gray-400 bg-gray-50 dark:bg-[#222] h-full flex items-center border-l border-gray-200 dark:border-[#2a2a2a]">kg</span>
           </div>
         </div>
         <div>
@@ -859,7 +859,7 @@ function WeightGoalSection({ currentWeight }) {
             type="date"
             value={goal.by || ''}
             onChange={e => { setGoal(p => ({ ...p, by: e.target.value })); setSaved(false); }}
-            className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none dark:bg-gray-700 dark:text-gray-100"
+            className="w-full border border-gray-200 dark:border-[#2a2a2a] rounded-xl px-3 py-2.5 text-sm focus:outline-none dark:bg-[#1a1a1a] dark:text-gray-100"
           />
         </div>
       </div>
@@ -870,7 +870,7 @@ function WeightGoalSection({ currentWeight }) {
             <span>現在 <span className="font-semibold text-gray-700 dark:text-gray-200">{currentWeight} kg</span></span>
             <span>目標 <span className={`font-semibold ${losing ? 'text-green-600' : 'text-blue-600'}`}>{targetNum} kg</span></span>
           </div>
-          <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div className="h-3 bg-gray-100 dark:bg-[#1a1a1a] rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${losing ? 'bg-green-400' : 'bg-blue-400'}`}
               style={{ width: `${pct}%` }}
@@ -924,8 +924,8 @@ function WeightTrendChart({ profile }) {
 
   if (weights.length === 0) {
     return (
-      <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
-        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">近 30 天體重趨勢</h2>
+      <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
+        <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest mb-3">近 30 天體重趨勢</h2>
         <p className="text-center text-gray-300 dark:text-gray-600 text-sm py-6">尚無體重記錄，請在主頁記錄體重</p>
       </section>
     );
@@ -958,9 +958,9 @@ function WeightTrendChart({ profile }) {
   const diff    = weights.length >= 2 ? (latestW - weights[0]).toFixed(1) : null;
 
   return (
-    <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
+    <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">近 30 天體重趨勢</h2>
+        <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest">近 30 天體重趨勢</h2>
         {diff !== null && (
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
             Number(diff) < 0
@@ -1047,7 +1047,7 @@ function ApiKeySection() {
   const masked = key ? key.slice(0, 10) + '•'.repeat(20) : '';
 
   return (
-    <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
+    <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
       <div className="flex items-center gap-2 mb-1">
         <span className="text-lg">🔑</span>
         <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Anthropic API Key</h2>
@@ -1060,11 +1060,11 @@ function ApiKeySection() {
           value={key}
           onChange={e => { setKey(e.target.value); setSaved(false); }}
           placeholder="sk-ant-api03-..."
-          className="flex-1 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 font-mono"
+          className="flex-1 border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 font-mono"
         />
         <button
           onClick={() => setShow(v => !v)}
-          className="px-3 py-2.5 bg-gray-100 dark:bg-gray-700 rounded-xl text-xs text-gray-500 dark:text-gray-300 hover:bg-gray-200 transition-colors"
+          className="px-3 py-2.5 bg-gray-100 dark:bg-[#1a1a1a] rounded-xl text-xs text-gray-500 dark:text-gray-300 hover:bg-gray-200 transition-colors"
         >
           {show ? '隱藏' : '顯示'}
         </button>
