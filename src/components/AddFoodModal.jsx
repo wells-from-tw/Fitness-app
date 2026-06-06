@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { estimateNutrition, estimateNutritionFromImage, parseMultipleFoods, readNutritionLabel, loadApiKey } from '../utils/ai';
 import { getBarcodeEntry, saveBarcodeEntry } from '../utils/storage';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 import { loadFavorites, saveFavorite, removeFavorite, loadAllDays } from '../utils/storage';
 
 function getRecentFoods() {
@@ -688,7 +689,6 @@ function BarcodeScannerInner({ onFound, hasKey, onRetry }) {
 
     async function start() {
       try {
-        const { BrowserMultiFormatReader } = await import('@zxing/browser');
         if (cancelled) return;
 
         const reader = new BrowserMultiFormatReader();
