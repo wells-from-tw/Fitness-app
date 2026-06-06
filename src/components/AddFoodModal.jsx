@@ -602,13 +602,36 @@ function BarcodeTab({ onFound }) {
 
     async function start() {
       try {
-        const { BrowserMultiFormatReader } = await import('@zxing/browser');
+        const { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } = await import('@zxing/browser');
         if (cancelled) return;
-        const reader = new BrowserMultiFormatReader();
+
+        // Hints: support common barcode formats
+        const hints = new Map();
+        hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+          BarcodeFormat.EAN_13,
+          BarcodeFormat.EAN_8,
+          BarcodeFormat.UPC_A,
+          BarcodeFormat.UPC_E,
+          BarcodeFormat.CODE_128,
+          BarcodeFormat.CODE_39,
+          BarcodeFormat.QR_CODE,
+        ]);
+        hints.set(DecodeHintType.TRY_HARDER, true);
+
+        const reader = new BrowserMultiFormatReader(hints);
         readerRef.current = reader;
 
-        await reader.decodeFromVideoDevice(
-          undefined,
+        // Force rear camera on mobile
+        const constraints = {
+          video: {
+            facingMode: { ideal: 'environment' },
+            width:  { ideal: 1280 },
+            height: { ideal: 720 },
+          }
+        };
+
+        await reader.decodeFromConstraints(
+          constraints,
           videoRef.current,
           async (result, err) => {
             if (cancelled || !result) return;
