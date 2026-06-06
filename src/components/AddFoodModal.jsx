@@ -663,12 +663,17 @@ async function lookupBarcode(barcode) {
 
 /* ── BarcodeTab ── */
 function BarcodeTab({ onFound, hasKey }) {
+  const [retryKey, setRetryKey] = useState(0);
+  return <BarcodeScannerInner key={retryKey} onFound={onFound} hasKey={hasKey} onRetry={() => setRetryKey(k => k + 1)} />;
+}
+
+function BarcodeScannerInner({ onFound, hasKey, onRetry }) {
   const videoRef    = useRef(null);
   const readerRef   = useRef(null);
-  const [phase, setPhase]           = useState('init');   // init|scanning|lookup|cached|ai-fallback|error
+  const [phase, setPhase]           = useState('init');
   const [barcode, setBarcode]       = useState('');
   const [errMsg,  setErrMsg]        = useState('');
-  const [cachedFood, setCachedFood] = useState(null);     // hit from local cache
+  const [cachedFood, setCachedFood] = useState(null);
   const [fallbackName, setFallbackName] = useState('');
   const [aiEstState, setAiEstState] = useState('idle');
   const [aiEstError, setAiEstError] = useState('');
@@ -749,7 +754,8 @@ function BarcodeTab({ onFound, hasKey }) {
         );
         if (!cancelled) setPhase('scanning');
       } catch (e) {
-        setErrMsg('無法開啟相機，請確認已授權相機權限');
+        const msg = e?.message || String(e);
+        setErrMsg(`相機錯誤：${msg}`);
         setPhase('error');
       }
     }
@@ -894,9 +900,16 @@ function BarcodeTab({ onFound, hasKey }) {
       )}
 
       {phase === 'error' && (
-        <div className="w-full bg-rose-50 dark:bg-rose-900/30 rounded-2xl p-4 text-center">
-          <p className="text-rose-500 text-sm font-semibold mb-1">⚠️ {errMsg}</p>
-          <p className="text-xs text-gray-400">請改用 AI 辨識或手動輸入</p>
+        <div className="w-full bg-rose-50 dark:bg-rose-900/30 rounded-2xl p-4 text-center flex flex-col gap-3">
+          <p className="text-rose-500 text-sm font-semibold">⚠️ {errMsg}</p>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="w-full py-2 bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold rounded-xl transition-colors"
+          >
+            重試
+          </button>
+          <p className="text-xs text-gray-400">若持續失敗，請改用 AI 辨識或手動輸入</p>
         </div>
       )}
     </div>
