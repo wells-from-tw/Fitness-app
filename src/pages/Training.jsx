@@ -433,10 +433,21 @@ function ExerciseLogItem({ entry, onRemove }) {
 }
 
 /* ── Manual entry form (when nothing selected from library) ────────────── */
+const INTENSITY_LEVELS = [
+  { label: '輕度',   desc: '伸展・慢走',       met: 3.5,  color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 border-blue-200 dark:border-blue-700' },
+  { label: '中度',   desc: '一般重訓・快走',    met: 5.0,  color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-300 border-amber-200 dark:border-amber-700' },
+  { label: '高強度', desc: '激烈重訓・跑步',    met: 7.5,  color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-300 border-orange-200 dark:border-orange-700' },
+  { label: '極高',   desc: 'HIIT・衝刺',       met: 10.0, color: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300 border-red-200 dark:border-red-700' },
+];
+
 function ManualForm({ profile, onAdd }) {
-  const [name, setName]         = useState('');
-  const [duration, setDuration] = useState('30');
-  const [calories, setCalories] = useState('');
+  const [name, setName]           = useState('');
+  const [duration, setDuration]   = useState('30');
+  const [intensity, setIntensity] = useState(1); // index into INTENSITY_LEVELS
+
+  const weightKg  = profile?.weight ?? 70;
+  const met       = INTENSITY_LEVELS[intensity].met;
+  const estimated = Math.round(met * weightKg * (Number(duration) || 0) / 60);
 
   function handle() {
     if (!name) return;
@@ -445,37 +456,66 @@ function ManualForm({ profile, onAdd }) {
       name,
       type:     'cardio',
       duration: Number(duration) || 0,
-      calories: Number(calories) || 0,
+      calories: estimated,
       muscles:  { primary: [], secondary: [] },
       sets:     [],
     });
   }
 
   return (
-    <div className="flex flex-col gap-2 border-t border-gray-100 dark:border-gray-700 pt-3">
+    <div className="flex flex-col gap-3 border-t border-gray-100 dark:border-[#222] pt-3">
       <p className="text-xs text-gray-400 font-semibold">手動輸入</p>
+
+      {/* Name */}
       <input
         value={name}
         onChange={e => setName(e.target.value)}
         placeholder="運動名稱"
-        className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
+        className="w-full border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
       />
-      <div className="flex gap-2">
-        <div className="flex-1">
-          <label className="text-xs text-gray-400 mb-1 block">時間（分）</label>
-          <input type="number" min="1" value={duration} onChange={e => setDuration(e.target.value)}
-            className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200" />
-        </div>
-        <div className="flex-1">
-          <label className="text-xs text-gray-400 mb-1 block">消耗（kcal）</label>
-          <input type="number" min="0" value={calories} onChange={e => setCalories(e.target.value)}
-            className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200" />
+
+      {/* Duration */}
+      <div>
+        <label className="text-xs text-gray-400 mb-1 block">時間（分）</label>
+        <input
+          type="number" min="1" value={duration}
+          onChange={e => setDuration(e.target.value)}
+          className="w-full border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
+        />
+      </div>
+
+      {/* Intensity selector */}
+      <div>
+        <label className="text-xs text-gray-400 mb-2 block">運動強度</label>
+        <div className="grid grid-cols-4 gap-1.5">
+          {INTENSITY_LEVELS.map((lv, i) => (
+            <button
+              key={lv.label}
+              type="button"
+              onClick={() => setIntensity(i)}
+              className={`flex flex-col items-center py-2 px-1 rounded-xl border-2 text-center transition-all active:scale-95 ${
+                intensity === i
+                  ? lv.color + ' border-2'
+                  : 'bg-gray-50 dark:bg-[#1a1a1a] text-gray-400 dark:text-gray-500 border-transparent'
+              }`}
+            >
+              <span className="text-xs font-bold leading-tight">{lv.label}</span>
+              <span className="text-[9px] leading-tight opacity-70 mt-0.5">{lv.desc}</span>
+            </button>
+          ))}
         </div>
       </div>
+
+      {/* Estimated calories display */}
+      <div className="flex items-center justify-between bg-orange-50 dark:bg-orange-900/20 rounded-xl px-4 py-2.5">
+        <span className="text-xs text-gray-500 dark:text-gray-400">預估消耗</span>
+        <span className="text-lg font-bold text-orange-500">{estimated} <span className="text-xs font-normal">kcal</span></span>
+      </div>
+
       <button
         onClick={handle}
-        disabled={!name}
-        className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-2xl py-2.5 text-sm transition-colors"
+        disabled={!name || !duration}
+        className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-2xl py-2.5 text-sm transition-colors active:scale-95"
       >
         新增
       </button>
