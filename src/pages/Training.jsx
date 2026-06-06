@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { loadExerciseLog, saveExerciseLog, loadProfile, getTodayKey } from '../utils/storage';
+import { loadExerciseLog, saveExerciseLog, loadAllExercise, loadProfile, getTodayKey } from '../utils/storage';
 import { EXERCISES, CATEGORIES, MUSCLE_LABELS, calcMuscleIntensities, intensityColor } from '../data/exercises';
 import { generateTrainingCard } from '../utils/shareCard';
 import MuscleHeatmap from '../components/MuscleHeatmap';
@@ -171,6 +171,9 @@ export default function Training() {
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">今日肌群熱力圖</h2>
           <MuscleHeatmap muscleIntensities={muscleIntensities} />
         </div>
+
+        {/* Monthly Training Heatmap */}
+        <TrainingCalendarHeatmap />
 
         {/* Today's Log */}
         <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-4">
@@ -476,6 +479,90 @@ function ManualForm({ profile, onAdd }) {
       >
         新增
       </button>
+    </div>
+  );
+}
+
+/* ─── TrainingCalendarHeatmap ─── */
+function TrainingCalendarHeatmap() {
+  const now        = new Date();
+  const year       = now.getFullYear();
+  const month      = now.getMonth();
+  const todayKey   = getTodayKey();
+  const allExercise = useMemo(() => loadAllExercise(), []);
+
+  const firstDay    = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const startWD     = firstDay.getDay(); // 0=Sun
+
+  const cells = [
+    ...Array(startWD).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => {
+      const d   = i + 1;
+      const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const exercises = allExercise[key] || [];
+      const totalBurned = exercises.reduce((s, e) => s + (e.calories || 0), 0);
+      const count = exercises.length;
+      return { d, key, count, totalBurned, isToday: key === todayKey, isFuture: key > todayKey };
+    }),
+  ];
+
+  function cellStyle(cell) {
+    if (!cell || cell.isFuture) return 'bg-gray-50 dark:bg-gray-700/40 text-gray-300 dark:text-gray-600';
+    if (cell.count === 0) return 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-400 dark:text-gray-500';
+    if (cell.count >= 4)  return 'bg-orange-300 dark:bg-orange-700/60 text-orange-800 dark:text-orange-200';
+    if (cell.count >= 2)  return 'bg-orange-200 dark:bg-orange-800/50 text-orange-700 dark:text-orange-300';
+    return 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400';
+  }
+
+  const daysWorked = cells.filter(c => c && !c.isFuture && c.count > 0).length;
+  const totalKcal  = cells.filter(Boolean).reduce((s, c) => s + (c.totalBurned || 0), 0);
+
+  return (
+    <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-[11px] text-gray-400 dark:text-gray-600 uppercase tracking-widest">
+          {month + 1} 月訓練熱力圖
+        </h2>
+        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+          <div className="w-3 h-3 rounded bg-gray-100 dark:bg-[#1a1a1a]" />
+          <div className="w-3 h-3 rounded bg-orange-100 dark:bg-orange-900/40" />
+          <div className="w-3 h-3 rounded bg-orange-200 dark:bg-orange-800/50" />
+          <div className="w-3 h-3 rounded bg-orange-300 dark:bg-orange-700/60" />
+          <span className="ml-0.5">無·少·中·多</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {['日','一','二','三','四','五','六'].map(d => (
+          <div key={d} className="text-center text-xs text-gray-400 font-medium">{d}</div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((cell, i) => {
+          if (!cell) return <div key={`pad-${i}`} />;
+          return (
+            <div
+              key={cell.key}
+              title={cell.count > 0 ? `${cell.count} 項運動・消耗 ${cell.totalBurned} kcal` : ''}
+              className={`aspect-square rounded-lg flex flex-col items-center justify-center transition-colors ${cellStyle(cell)} ${cell.isToday ? 'ring-2 ring-orange-400 ring-offset-1 dark:ring-offset-[#111]' : ''}`}
+            >
+              <span className="text-xs font-semibold leading-none">{cell.d}</span>
+              {cell.count > 0 && (
+                <span className="text-[8px] leading-none mt-0.5 opacity-70">{cell.count}項</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {daysWorked > 0 && (
+        <div className="flex justify-between text-xs text-gray-400 mt-3 pt-3 border-t border-gray-100 dark:border-[#1e1e1e]">
+          <span>本月訓練 <span className="font-semibold text-orange-500">{daysWorked} 天</span></span>
+          <span>累計消耗 <span className="font-semibold text-orange-500">{totalKcal} kcal</span></span>
+        </div>
+      )}
     </div>
   );
 }
