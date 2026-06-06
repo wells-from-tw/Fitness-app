@@ -634,7 +634,10 @@ async function lookupBarcode(barcode) {
     `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_zh,product_name_en,serving_size,nutriments`,
     { headers: { 'User-Agent': 'WiseFitness/1.0' } }
   );
-  if (!res.ok) throw new Error('網路錯誤，請稍後再試');
+  if (!res.ok) {
+    if (res.status === 404) return { found: false, hasNutrition: false, name: '', calories: 0, carbs: 0, protein: 0, fat: 0 };
+    throw new Error('網路錯誤，請稍後再試');
+  }
   const data = await res.json();
 
   if (data.status !== 1) {
