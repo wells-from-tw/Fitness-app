@@ -433,32 +433,35 @@ function ExerciseLogItem({ entry, onRemove }) {
 }
 
 /* ── Manual entry form (when nothing selected from library) ────────────── */
-const INTENSITY_LEVELS = [
-  { label: '輕度',   desc: '伸展・慢走',       met: 3.5,  color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 border-blue-200 dark:border-blue-700' },
-  { label: '中度',   desc: '一般重訓・快走',    met: 5.0,  color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-300 border-amber-200 dark:border-amber-700' },
-  { label: '高強度', desc: '激烈重訓・跑步',    met: 7.5,  color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-300 border-orange-200 dark:border-orange-700' },
-  { label: '極高',   desc: 'HIIT・衝刺',       met: 10.0, color: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300 border-red-200 dark:border-red-700' },
-];
-
 function ManualForm({ profile, onAdd }) {
-  const [name, setName]           = useState('');
-  const [duration, setDuration]   = useState('30');
-  const [intensity, setIntensity] = useState(1); // index into INTENSITY_LEVELS
+  const [name, setName]         = useState('');
+  const [duration, setDuration] = useState('');
+  const [sets, setSets]         = useState([{ reps: '10', weight: '' }]);
 
-  const weightKg  = profile?.weight ?? 70;
-  const met       = INTENSITY_LEVELS[intensity].met;
-  const estimated = Math.round(met * weightKg * (Number(duration) || 0) / 60);
+  const weightKg = profile?.weight ?? 70;
+
+  // Estimate calories: MET 5.0 for general strength training
+  const MET = 5.0;
+  const estimated = duration
+    ? Math.round(MET * weightKg * (Number(duration) || 0) / 60)
+    : null;
+
+  function updateSet(i, field, val) {
+    setSets(prev => prev.map((s, idx) => idx === i ? { ...s, [field]: val } : s));
+  }
+  function addSet()    { setSets(prev => [...prev, { reps: '10', weight: '' }]); }
+  function removeSet(i) { setSets(prev => prev.filter((_, idx) => idx !== i)); }
 
   function handle() {
     if (!name) return;
     onAdd({
       id:       Date.now(),
       name,
-      type:     'cardio',
+      type:     'strength',
       duration: Number(duration) || 0,
-      calories: estimated,
+      calories: estimated ?? 0,
       muscles:  { primary: [], secondary: [] },
-      sets:     [],
+      sets:     sets.map(s => ({ reps: Number(s.reps) || 0, weight: Number(s.weight) || 0 })),
     });
   }
 
@@ -470,51 +473,71 @@ function ManualForm({ profile, onAdd }) {
       <input
         value={name}
         onChange={e => setName(e.target.value)}
-        placeholder="運動名稱"
+        placeholder="運動名稱（例：HS 胸推）"
         className="w-full border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
       />
 
       {/* Duration */}
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">時間（分）</label>
+        <label className="text-xs text-gray-400 mb-1 block">訓練時間（分鐘）</label>
         <input
           type="number" min="1" value={duration}
           onChange={e => setDuration(e.target.value)}
+          placeholder="30"
           className="w-full border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
         />
       </div>
 
-      {/* Intensity selector */}
+      {/* Sets */}
       <div>
-        <label className="text-xs text-gray-400 mb-2 block">運動強度</label>
-        <div className="grid grid-cols-4 gap-1.5">
-          {INTENSITY_LEVELS.map((lv, i) => (
-            <button
-              key={lv.label}
-              type="button"
-              onClick={() => setIntensity(i)}
-              className={`flex flex-col items-center py-2 px-1 rounded-xl border-2 text-center transition-all active:scale-95 ${
-                intensity === i
-                  ? lv.color + ' border-2'
-                  : 'bg-gray-50 dark:bg-[#1a1a1a] text-gray-400 dark:text-gray-500 border-transparent'
-              }`}
-            >
-              <span className="text-xs font-bold leading-tight">{lv.label}</span>
-              <span className="text-[9px] leading-tight opacity-70 mt-0.5">{lv.desc}</span>
-            </button>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs text-gray-400">組數 / 次數</label>
+          <button
+            type="button" onClick={addSet}
+            className="text-xs text-orange-500 font-semibold hover:text-orange-600"
+          >+ 加一組</button>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          {sets.map((s, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 w-8 shrink-0">第{i + 1}組</span>
+              <div className="flex-1 flex items-center gap-1">
+                <input
+                  type="number" min="1" value={s.reps}
+                  onChange={e => updateSet(i, 'reps', e.target.value)}
+                  placeholder="次數"
+                  className="flex-1 border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-200"
+                />
+                <span className="text-xs text-gray-400">次</span>
+              </div>
+              <div className="flex-1 flex items-center gap-1">
+                <input
+                  type="number" min="0" step="0.5" value={s.weight}
+                  onChange={e => updateSet(i, 'weight', e.target.value)}
+                  placeholder="重量"
+                  className="flex-1 border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-200"
+                />
+                <span className="text-xs text-gray-400">kg</span>
+              </div>
+              {sets.length > 1 && (
+                <button onClick={() => removeSet(i)} className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
+              )}
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Estimated calories display */}
-      <div className="flex items-center justify-between bg-orange-50 dark:bg-orange-900/20 rounded-xl px-4 py-2.5">
-        <span className="text-xs text-gray-500 dark:text-gray-400">預估消耗</span>
-        <span className="text-lg font-bold text-orange-500">{estimated} <span className="text-xs font-normal">kcal</span></span>
-      </div>
+      {/* Estimated calories */}
+      {estimated !== null && (
+        <div className="flex items-center justify-between bg-orange-50 dark:bg-orange-900/20 rounded-xl px-4 py-2.5">
+          <span className="text-xs text-gray-500 dark:text-gray-400">預估消耗</span>
+          <span className="text-lg font-bold text-orange-500">{estimated} <span className="text-xs font-normal">kcal</span></span>
+        </div>
+      )}
 
       <button
         onClick={handle}
-        disabled={!name || !duration}
+        disabled={!name}
         className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-2xl py-2.5 text-sm transition-colors active:scale-95"
       >
         新增
