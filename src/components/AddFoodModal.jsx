@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { estimateNutrition, estimateNutritionFromImage, loadApiKey } from '../utils/ai';
+import { estimateNutrition, estimateNutritionFromImage, parseMultipleFoods, loadApiKey } from '../utils/ai';
 import { loadFavorites, saveFavorite, removeFavorite, loadAllDays } from '../utils/storage';
 
 function getRecentFoods() {
@@ -46,6 +46,7 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
   const [photo, setPhoto]       = useState(null);   // { preview, base64, mimeType }
   const [aiState, setAiState]   = useState('idle');
   const [aiError, setAiError]   = useState('');
+  const [multiResults, setMultiResults] = useState([]); // parsed multi-food results
   const [favs, setFavs]         = useState(() => loadFavorites());
   const [recentFoods]           = useState(() => getRecentFoods());
   const [servings, setServings] = useState(1);
@@ -61,15 +62,19 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
     if (!aiInput.trim()) return;
     setAiState('loading');
     setAiError('');
+    setMultiResults([]);
     try {
-      const result = await estimateNutrition(aiInput.trim());
-      setForm({
-        name:     result.name,
-        calories: String(result.calories),
-        carbs:    String(result.carbs),
-        protein:  String(result.protein),
-        fat:      String(result.fat),
-      });
+      const results = await parseMultipleFoods(aiInput.trim());
+      if (results.length === 1) {
+        // Single item → fill form as before
+        const r = results[0];
+        setForm({ name: r.name, calories: String(r.calories), carbs: String(r.carbs), protein: String(r.protein), fat: String(r.fat) });
+        setMultiResults([]);
+      } else {
+        // Multiple items → show multi-preview
+        setMultiResults(results);
+        setForm(EMPTY);
+      }
       setAiState('done');
     } catch (e) {
       setAiState('error');
@@ -77,6 +82,13 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
       else if (e.message === 'INVALID_KEY') setAiError('API Key 無效，請至設定頁確認。');
       else setAiError(`估算失敗：${e.message}`);
     }
+  }
+
+  function handleAddAll() {
+    multiResults.forEach(item => {
+      onAdd({ ...item, id: Date.now() + Math.random() });
+    });
+    onClose();
   }
 
   async function handlePhotoChange(e) {
@@ -213,22 +225,20 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
 
               {/* Text input */}
               {aiMode === 'text' && (
-                <div>
-                  <div className="flex gap-2">
-                    <input
-                      value={aiInput}
-                      onChange={e => { setAiInput(e.target.value); setAiState('idle'); }}
-                      onKeyDown={e => { if (e.key === 'Enter') handleAiEstimate(); }}
-                      placeholder="例：一碗牛肉麵、麥當勞大麥克套餐…"
-                      className="flex-1 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                    />
-                    <button type="button" onClick={handleAiEstimate}
-                      disabled={!aiInput.trim() || aiState === 'loading'}
-                      className="px-4 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-semibold rounded-xl transition-colors whitespace-nowrap">
-                      {aiState === 'loading' ? <span className="flex items-center gap-1.5"><SpinIcon/>估算中</span> : '✨ 估算'}
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1.5">使用 Claude AI 自動估算卡路里，結果僅供參考</p>
+                <div className="flex flex-col gap-2">
+                  <textarea
+                    value={aiInput}
+                    onChange={e => { setAiInput(e.target.value); setAiState('idle'); setMultiResults([]); }}
+                    rows={3}
+                    placeholder={'直接描述你吃了什麼，支援多品項\n例：八方雲集12個招牌鍋貼\nSukiya超大碗牛丼＋單點一盤牛丼'}
+                    className="w-full border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+                  />
+                  <button type="button" onClick={handleAiEstimate}
+                    disabled={!aiInput.trim() || aiState === 'loading'}
+                    className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-semibold rounded-xl transition-colors">
+                    {aiState === 'loading' ? <span className="flex items-center justify-center gap-1.5"><SpinIcon/>AI 計算中…</span> : '✨ AI 自動換算營養素'}
+                  </button>
+                  <p className="text-xs text-gray-400">可一次輸入整頓飯，AI 自動拆分品項</p>
                 </div>
               )}
 
@@ -265,11 +275,46 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
                 <div className="bg-red-50 text-red-500 text-sm rounded-xl px-4 py-3">{aiError}</div>
               )}
 
-              {aiState === 'done' && (
-                <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
+              {/* Multi-item result */}
+              {aiState === 'done' && multiResults.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span>✨</span>
+                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">AI 解析結果（{multiResults.length} 項）</span>
+                  </div>
+                  {multiResults.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between bg-gray-50 dark:bg-[#1a1a1a] rounded-xl px-4 py-3">
+                      <div className="flex-1 min-w-0 mr-3">
+                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{item.name}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          碳 {item.carbs}g · 蛋 {item.protein}g · 脂 {item.fat}g
+                        </p>
+                      </div>
+                      <span className="text-sm font-bold text-blue-500 shrink-0">{item.calories} kcal</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between text-sm px-1 pt-1">
+                    <span className="text-gray-400">合計</span>
+                    <span className="font-bold text-blue-600">
+                      {multiResults.reduce((s, i) => s + i.calories, 0)} kcal
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddAll}
+                    className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-2xl text-sm transition-all active:scale-95"
+                  >
+                    全部加入{MEAL_LABELS[mealType]}
+                  </button>
+                </div>
+              )}
+
+              {/* Single-item result */}
+              {aiState === 'done' && multiResults.length === 0 && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4 border border-blue-100 dark:border-blue-800">
                   <div className="flex items-center gap-2 mb-3">
                     <span>✨</span>
-                    <span className="text-sm font-semibold text-blue-700">AI 估算結果</span>
+                    <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">AI 估算結果</span>
                     <button
                       type="button"
                       onClick={handleSaveFav}
@@ -278,7 +323,7 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
                       ⭐ 收藏
                     </button>
                   </div>
-                  <p className="text-base font-bold text-gray-800 mb-2">{form.name}</p>
+                  <p className="text-base font-bold text-gray-800 dark:text-gray-100 mb-2">{form.name}</p>
                   <div className="grid grid-cols-4 gap-2 text-center">
                     {[
                       { label: '卡路里', value: form.calories, unit: 'kcal', color: 'text-blue-600'  },
@@ -286,7 +331,7 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
                       { label: '蛋白質', value: form.protein,  unit: 'g',    color: 'text-blue-600'  },
                       { label: '脂肪',   value: form.fat,      unit: 'g',    color: 'text-rose-500'  },
                     ].map(({ label, value, unit, color }) => (
-                      <div key={label} className="bg-white rounded-xl p-2">
+                      <div key={label} className="bg-white dark:bg-[#1a1a1a] rounded-xl p-2">
                         <p className={`text-base font-bold ${color}`}>{value}</p>
                         <p className="text-xs text-gray-400">{unit}</p>
                         <p className="text-xs text-gray-500">{label}</p>
@@ -296,17 +341,19 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
                 </div>
               )}
 
-              {aiState === 'done' && <FormFields form={form} set={set} />}
-              {aiState === 'done' && <ServingsRow servings={servings} setServings={setServings} />}
+              {aiState === 'done' && multiResults.length === 0 && <FormFields form={form} set={set} />}
+              {aiState === 'done' && multiResults.length === 0 && <ServingsRow servings={servings} setServings={setServings} />}
 
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={!form.name || !form.calories}
-                className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-2xl py-3 transition-colors"
-              >
-                新增至{MEAL_LABELS[mealType]}
-              </button>
+              {multiResults.length === 0 && (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={!form.name || !form.calories}
+                  className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-2xl py-3 transition-colors"
+                >
+                  新增至{MEAL_LABELS[mealType]}
+                </button>
+              )}
             </div>
           )}
 

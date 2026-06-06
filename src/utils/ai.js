@@ -176,3 +176,42 @@ ${planText}`;
   if (!match) throw new Error('PARSE_ERROR');
   return JSON.parse(match[0]);
 }
+
+/**
+ * Parse a freeform meal description into multiple food items.
+ * Returns an array of { name, calories, carbs, protein, fat }
+ */
+export async function parseMultipleFoods(description) {
+  const prompt = `你是一個專業的台灣營養師助理。使用者描述了他今天吃的東西，可能包含多個品項。
+請辨識每個食物並估算其營養成分，以 JSON 陣列回傳。只回傳 JSON 陣列，不要加任何說明文字或 markdown。
+
+每個品項格式：
+{
+  "name": "食物名稱（繁體中文，簡短清楚，包含數量或份量）",
+  "calories": 整數,
+  "carbs": 整數（克）,
+  "protein": 整數（克）,
+  "fat": 整數（克）
+}
+
+估算原則：
+- 台灣在地連鎖店請參考實際菜單熱量（八方雲集、Sukiya、麥當勞等）
+- 有指定數量請乘以對應份量
+- 套餐請拆成主餐+附餐（如有米飯請單獨列出）
+- 無法細分的套餐就列為一筆
+
+使用者描述：${description}`;
+
+  const data = await callClaude([{ role: 'user', content: prompt }]);
+  const text = data.content?.[0]?.text || '';
+  const match = text.match(/\[[\s\S]*\]/);
+  if (!match) throw new Error('PARSE_ERROR');
+  const parsed = JSON.parse(match[0]);
+  return parsed.map(item => ({
+    name:     String(item.name    || '未知食物'),
+    calories: Math.round(Number(item.calories) || 0),
+    carbs:    Math.round(Number(item.carbs)    || 0),
+    protein:  Math.round(Number(item.protein)  || 0),
+    fat:      Math.round(Number(item.fat)      || 0),
+  }));
+}
