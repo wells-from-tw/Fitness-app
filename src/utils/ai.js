@@ -144,3 +144,35 @@ ${mealLines.length > 0 ? mealLines.join('\n') : '今日尚無飲食記錄'}`;
   const data = await callClaude([{ role: 'user', content: prompt }]);
   return data.content?.[0]?.text?.trim() || '無法取得分析結果';
 }
+
+/**
+ * Parse a freeform workout plan text into structured exercise entries.
+ * Returns an array of { name, sets: [{reps, weight}], duration }
+ */
+export async function parseWorkoutPlan(planText) {
+  const prompt = `你是一個健身紀錄助手。請解析以下訓練計劃文字，將每個動作轉換成 JSON 格式。
+只回傳 JSON 陣列，不要加任何說明文字或 markdown。
+
+每個動作格式如下：
+{
+  "name": "動作名稱（保留原文，中英文皆可）",
+  "sets": [
+    { "reps": 次數（整數）, "weight": 重量公斤（整數，沒有填0）}
+  ],
+  "duration": 預估完成此動作所需分鐘數（整數，依組數估算，每組約3分鐘含休息）
+}
+
+注意：
+- 如果指定多組相同設定，請展開成多個 set 物件
+- 如果沒有標示重量，weight 填 0
+- duration 請根據組數自行估算
+
+訓練計劃：
+${planText}`;
+
+  const data = await callClaude([{ role: 'user', content: prompt }]);
+  const text = data.content?.[0]?.text || '';
+  const match = text.match(/\[[\s\S]*\]/);
+  if (!match) throw new Error('PARSE_ERROR');
+  return JSON.parse(match[0]);
+}

@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { loadExerciseLog, saveExerciseLog, loadAllExercise, loadProfile, getTodayKey } from '../utils/storage';
 import { EXERCISES, CATEGORIES, MUSCLE_LABELS, calcMuscleIntensities, intensityColor } from '../data/exercises';
 import { generateTrainingCard } from '../utils/shareCard';
+import { parseWorkoutPlan } from '../utils/ai';
 import MuscleHeatmap from '../components/MuscleHeatmap';
 
 export default function Training() {
@@ -14,6 +15,7 @@ export default function Training() {
   const [selected, setSelected] = useState(null); // exercise object from DB
   const [duration, setDuration] = useState('30');
   const [sets, setSets]         = useState([{ reps: '10', weight: '20' }]);
+  const [showPaste, setShowPaste] = useState(false);
 
   const totalBurned = useMemo(() => log.reduce((s, e) => s + (e.calories || 0), 0), [log]);
   const muscleIntensities = useMemo(() => calcMuscleIntensities(log), [log]);
@@ -119,6 +121,11 @@ export default function Training() {
     persist(log.filter(e => e.id !== id));
   }
 
+  function handleAddMany(entries) {
+    const next = [...log, ...entries];
+    persist(next);
+  }
+
   const filteredExercises = useMemo(
     () => EXERCISES.filter(e => e.category === cat),
     [cat]
@@ -148,6 +155,12 @@ export default function Training() {
                 <p className="text-xs text-gray-400">kcal 消耗</p>
               </div>
             )}
+            <button
+              onClick={() => setShowPaste(true)}
+              className="flex items-center gap-1 px-3 py-2 rounded-2xl bg-violet-500 hover:bg-violet-600 text-white text-xs font-semibold transition-all active:scale-95"
+            >
+              📋 貼上計劃
+            </button>
             {log.length > 0 && (
               <button
                 onClick={handleShare}
@@ -364,6 +377,14 @@ export default function Training() {
         )}
 
       </div>
+
+      {showPaste && (
+        <PasteSheet
+          profile={profile}
+          onAdd={handleAddMany}
+          onClose={() => setShowPaste(false)}
+        />
+      )}
     </div>
   );
 }
@@ -542,6 +563,124 @@ function ManualForm({ profile, onAdd }) {
       >
         新增
       </button>
+    </div>
+  );
+}
+
+/* ── PasteSheet ────────────────────────────────────────────────────────── */
+function PasteSheet({ profile, onAdd, onClose }) {
+  const [text, setText]     = useState('');
+  const [status, setStatus] = useState('idle'); // idle | loading | done | error
+  const [parsed, setParsed] = useState([]);
+  const [errMsg, setErrMsg] = useState('');
+
+  const weightKg = profile?.weight ?? 70;
+  const MET = 5.0;
+
+  async function handleParse() {
+    if (!text.trim()) return;
+    setStatus('loading');
+    setErrMsg('');
+    try {
+      const result = await parseWorkoutPlan(text.trim());
+      // Build log entries
+      const entries = result.map(item => ({
+        id:       Date.now() + Math.random(),
+        name:     item.name,
+        type:     'strength',
+        duration: item.duration || Math.ceil((item.sets?.length || 1) * 3),
+        calories: Math.round(MET * weightKg * ((item.duration || Math.ceil((item.sets?.length || 1) * 3))) / 60),
+        muscles:  { primary: [], secondary: [] },
+        sets:     (item.sets || []).map(s => ({ reps: s.reps || 0, weight: s.weight || 0 })),
+      }));
+      setParsed(entries);
+      setStatus('done');
+    } catch (e) {
+      setErrMsg(e.message === 'NO_KEY' ? '請先在設定頁面輸入 API Key' : '解析失敗，請確認格式或重試');
+      setStatus('error');
+    }
+  }
+
+  function handleConfirm() {
+    onAdd(parsed);
+    onClose();
+  }
+
+  const totalKcal = parsed.reduce((s, e) => s + e.calories, 0);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center" onClick={onClose}>
+      <div
+        className="bg-white dark:bg-[#111] rounded-t-3xl w-full max-w-lg p-6 pb-10 max-h-[85vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">📋 貼上訓練計劃</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+        </div>
+
+        {status !== 'done' ? (
+          <>
+            <p className="text-xs text-gray-400 mb-3">
+              把 ChatGPT 或任何地方的訓練計劃文字貼進來，AI 會自動解析並加入今日訓練。
+            </p>
+            <textarea
+              value={text}
+              onChange={e => setText(e.target.value)}
+              placeholder={`例如：\n臥推 4組 × 10下 80kg\n上斜臥推 3組 × 12下\nHS 胸推 4組 × 8下 60kg`}
+              rows={7}
+              className="w-full border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 resize-none"
+            />
+            {errMsg && <p className="text-xs text-red-500 mt-2">{errMsg}</p>}
+            <button
+              onClick={handleParse}
+              disabled={!text.trim() || status === 'loading'}
+              className="mt-3 w-full py-3 rounded-2xl bg-violet-500 hover:bg-violet-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-sm transition-all active:scale-95 flex items-center justify-center gap-2"
+            >
+              {status === 'loading'
+                ? <><span className="inline-block animate-spin">◌</span> AI 解析中…</>
+                : '✨ 解析計劃'}
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-xs text-gray-400 mb-3">解析完成！以下動作將加入今日訓練：</p>
+            <div className="flex flex-col gap-2 mb-4">
+              {parsed.map((e, i) => (
+                <div key={i} className="flex items-start justify-between bg-gray-50 dark:bg-[#1a1a1a] rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{e.name}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {e.sets.length} 組・{e.duration} 分鐘
+                      {e.sets.some(s => s.weight > 0) && `・${e.sets.map(s => `${s.reps}×${s.weight}kg`).join(' ')}`}
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold text-orange-500 shrink-0 ml-2">~{e.calories} kcal</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between text-sm mb-4 px-1">
+              <span className="text-gray-500">共 {parsed.length} 項・預估消耗</span>
+              <span className="font-bold text-orange-500">{totalKcal} kcal</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setStatus('idle'); setParsed([]); }}
+                className="flex-1 py-3 rounded-2xl bg-gray-100 dark:bg-[#1a1a1a] text-gray-600 dark:text-gray-300 font-semibold text-sm"
+              >
+                重新輸入
+              </button>
+              <button
+                onClick={handleConfirm}
+                className="flex-1 py-3 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm transition-all active:scale-95"
+              >
+                加入今日訓練
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
