@@ -1,3 +1,5 @@
+import { useRef, useEffect } from 'react';
+
 export default function CalorieRing({ consumed, burned = 0, goal }) {
   const net       = Math.max(0, consumed - burned);
   const remaining = Math.max(0, goal - net);
@@ -13,6 +15,29 @@ export default function CalorieRing({ consumed, burned = 0, goal }) {
 
   const waveColor1 = overLimit ? '#f87171' : '#fef08a';
   const waveColor2 = overLimit ? '#ef4444' : '#f97316';
+
+  // Trigger one-shot animations when consumed changes
+  const wave1Ref  = useRef(null);
+  const wave2Ref  = useRef(null);
+  const numRef    = useRef(null);
+  const prevConsumed = useRef(consumed);
+
+  useEffect(() => {
+    if (consumed === prevConsumed.current) return;
+    prevConsumed.current = consumed;
+
+    [
+      { el: wave1Ref.current, cls: 'animate-flame-wave1' },
+      { el: wave2Ref.current, cls: 'animate-flame-wave2' },
+      { el: numRef.current,   cls: 'animate-calorie-pop'  },
+    ].forEach(({ el, cls }) => {
+      if (!el) return;
+      el.classList.remove(cls);
+      void el.offsetWidth; // reflow to restart animation
+      el.classList.add(cls);
+      el.addEventListener('animationend', () => el.classList.remove(cls), { once: true });
+    });
+  }, [consumed]);
 
   return (
     <div className="flex flex-col items-center gap-5">
@@ -42,20 +67,20 @@ export default function CalorieRing({ consumed, burned = 0, goal }) {
             transition: 'height 0.8s cubic-bezier(0.4,0,0.2,1)',
           }}
         >
-          {/* Wave at flame tip */}
+          {/* Wave at flame tip — static, animates only on value change */}
           <svg
-            style={{ position: 'absolute', top: -28, left: 0, width: '100%', height: 30, willChange: 'transform' }}
+            style={{ position: 'absolute', top: -28, left: 0, width: '100%', height: 30 }}
             viewBox="0 0 210 30"
             preserveAspectRatio="none"
           >
             <path
-              style={{ animation: 'flame-wave1 1.8s ease-in-out infinite', willChange: 'transform', transformOrigin: 'center' }}
+              ref={wave1Ref}
               fill={waveColor1}
               fillOpacity="0.9"
               d="M0,20 Q26,2 52,18 Q78,32 104,15 Q130,2 156,18 Q182,32 210,15 L210,30 L0,30 Z"
             />
             <path
-              style={{ animation: 'flame-wave2 2.3s ease-in-out infinite', willChange: 'transform', transformOrigin: 'center' }}
+              ref={wave2Ref}
               fill={waveColor2}
               fillOpacity="0.7"
               d="M0,16 Q35,4 70,20 Q105,32 140,14 Q175,2 210,18 L210,30 L0,30 Z"
@@ -76,7 +101,7 @@ export default function CalorieRing({ consumed, burned = 0, goal }) {
           }}
         >
           <span
-            className="animate-calorie-pulse"
+            ref={numRef}
             style={{
               fontSize: 46,
               fontWeight: 700,

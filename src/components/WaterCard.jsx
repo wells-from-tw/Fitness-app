@@ -43,7 +43,7 @@ export default function WaterCard({ dateKey, initialCups, goal = 8 }) {
       {/* Progress track */}
       <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden mb-3">
         <div
-          className="h-full rounded-full water-bar-filled transition-all duration-500"
+          className="h-full rounded-full bg-cyan-400 transition-all duration-500"
           style={{ width: `${pct * 100}%` }}
         />
       </div>
@@ -63,7 +63,7 @@ export default function WaterCard({ dateKey, initialCups, goal = 8 }) {
           >
             <div
               className={`w-full h-full rounded-full transition-all duration-300 ${
-                i < cups ? 'water-bar-filled' : 'bg-gray-100 dark:bg-gray-800'
+                i < cups ? 'bg-cyan-400' : 'bg-gray-100 dark:bg-gray-800'
               }`}
             />
           </button>
