@@ -679,6 +679,7 @@ function BarcodeScannerInner({ onFound, hasKey, onRetry }) {
   const [errMsg,  setErrMsg]        = useState('');
   const [cachedFood, setCachedFood] = useState(null);
   const [fallbackName, setFallbackName] = useState('');
+  const [fallbackForm, setFallbackForm] = useState({ calories: '', carbs: '', protein: '', fat: '' });
   const [aiEstState, setAiEstState] = useState('idle');
   const [aiEstError, setAiEstError] = useState('');
 
@@ -733,8 +734,9 @@ function BarcodeScannerInner({ onFound, hasKey, onRetry }) {
                 saveBarcodeEntry(code, food);
                 onFound(food);
               } else {
-                // ⚠️ Not found or no nutrition → AI fallback
+                // ⚠️ Not found or no nutrition → manual fallback
                 setFallbackName(info.name || '');
+                setFallbackForm({ calories: '', carbs: '', protein: '', fat: '' });
                 setPhase('ai-fallback');
               }
             } catch (e) {
@@ -761,14 +763,36 @@ function BarcodeScannerInner({ onFound, hasKey, onRetry }) {
     setAiEstError('');
     try {
       const result = await estimateNutrition(fallbackName.trim());
-      saveBarcodeEntry(barcode, result); // 存入快取，下次直接用
-      onFound(result);
+      setFallbackForm({
+        calories: String(result.calories),
+        carbs:    String(result.carbs),
+        protein:  String(result.protein),
+        fat:      String(result.fat),
+      });
+      setAiEstState('done');
     } catch (e) {
       setAiEstState('error');
       if (e.message === 'NO_KEY')           setAiEstError('尚未設定 API Key，請至設定頁面輸入。');
       else if (e.message === 'INVALID_KEY') setAiEstError('API Key 無效，請至設定頁確認。');
       else setAiEstError(`AI 估算失敗：${e.message}`);
     }
+  }
+
+  function handleFallbackSave() {
+    if (!fallbackName.trim() || !fallbackForm.calories) return;
+    const food = {
+      name:     fallbackName.trim(),
+      calories: Math.round(Number(fallbackForm.calories) || 0),
+      carbs:    Math.round(Number(fallbackForm.carbs)    || 0),
+      protein:  Math.round(Number(fallbackForm.protein)  || 0),
+      fat:      Math.round(Number(fallbackForm.fat)      || 0),
+    };
+    saveBarcodeEntry(barcode, food);
+    onFound(food);
+  }
+
+  function setFF(field, val) {
+    setFallbackForm(prev => ({ ...prev, [field]: val }));
   }
 
   return (
@@ -840,7 +864,7 @@ function BarcodeScannerInner({ onFound, hasKey, onRetry }) {
         </div>
       )}
 
-      {/* ── AI Fallback UI ── */}
+      {/* ── Manual Fallback UI ── */}
       {phase === 'ai-fallback' && (
         <div className="w-full flex flex-col gap-3">
           <div className="bg-amber-50 dark:bg-amber-900/20 rounded-2xl px-4 py-3 flex items-start gap-2">
@@ -849,16 +873,13 @@ function BarcodeScannerInner({ onFound, hasKey, onRetry }) {
               <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
                 {fallbackName ? '找到商品名稱，但缺少營養資料' : '資料庫查無此商品'}
               </p>
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                條碼：{barcode}
-              </p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">條碼：{barcode}</p>
             </div>
           </div>
 
+          {/* 商品名稱 */}
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">
-              商品名稱（可修改後讓 AI 估算）
-            </label>
+            <label className="text-xs text-gray-500 mb-1 block">商品名稱 *</label>
             <input
               value={fallbackName}
               onChange={e => { setFallbackName(e.target.value); setAiEstState('idle'); setAiEstError(''); }}
@@ -867,26 +888,56 @@ function BarcodeScannerInner({ onFound, hasKey, onRetry }) {
             />
           </div>
 
-          {hasKey ? (
+          {/* 營養素手動輸入 */}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: '熱量 (kcal) *', field: 'calories' },
+              { label: '碳水 (g)',       field: 'carbs'    },
+              { label: '蛋白質 (g)',     field: 'protein'  },
+              { label: '脂肪 (g)',       field: 'fat'      },
+            ].map(({ label, field }) => (
+              <div key={field}>
+                <label className="text-xs text-gray-500 mb-1 block">{label}</label>
+                <input
+                  type="number" min="0" step="1"
+                  value={fallbackForm[field]}
+                  onChange={e => setFF(field, e.target.value)}
+                  className="w-full border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* AI 輔助（選擇性） */}
+          {hasKey && (
             <button
               type="button"
               onClick={handleAiFallback}
               disabled={!fallbackName.trim() || aiEstState === 'loading'}
-              className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-semibold rounded-xl transition-colors"
+              className="w-full py-2 bg-gray-100 dark:bg-[#1a1a1a] hover:bg-gray-200 disabled:opacity-40 text-gray-600 dark:text-gray-400 text-sm font-medium rounded-xl transition-colors"
             >
               {aiEstState === 'loading'
                 ? <span className="flex items-center justify-center gap-1.5"><SpinIcon/>AI 估算中…</span>
-                : '✨ AI 自動估算營養素'}
+                : '✨ 讓 AI 幫我填（會花費 API 費用）'}
             </button>
-          ) : (
-            <p className="text-xs text-gray-400 text-center">請先在設定頁設定 API Key 以使用 AI 估算</p>
           )}
 
           {aiEstState === 'error' && (
-            <div className="bg-red-50 dark:bg-red-900/20 text-red-500 text-sm rounded-xl px-4 py-3">
+            <div className="bg-red-50 dark:bg-red-900/20 text-red-500 text-sm rounded-xl px-4 py-2">
               {aiEstError}
             </div>
           )}
+
+          {/* 儲存並加入 */}
+          <button
+            type="button"
+            onClick={handleFallbackSave}
+            disabled={!fallbackName.trim() || !fallbackForm.calories}
+            className="w-full py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-2xl text-sm transition-colors"
+          >
+            存入私人資料庫並加入餐點
+          </button>
+          <p className="text-xs text-gray-400 text-center">下次掃同一個條碼會直接帶入，不需再輸入</p>
         </div>
       )}
 
