@@ -151,21 +151,24 @@ ${mealLines.length > 0 ? mealLines.join('\n') : '今日尚無飲食記錄'}`;
  */
 export async function parseWorkoutPlan(planText) {
   const prompt = `你是一個健身紀錄助手。請解析以下訓練計劃文字，將每個動作轉換成 JSON 格式。
-只回傳 JSON 陣列，不要加任何說明文字或 markdown。
+只回傳 JSON 陣列，不要加任何說明文字或 markdown 代碼塊。
 
 每個動作格式如下：
 {
-  "name": "動作名稱（保留原文，中英文皆可）",
+  "name": "動作名稱（保留原文）",
   "sets": [
-    { "reps": 次數（整數）, "weight": 重量公斤（整數，沒有填0）}
+    { "reps": 數字, "weight": 數字 }
   ],
-  "duration": 預估完成此動作所需分鐘數（整數，依組數估算，每組約3分鐘含休息）
+  "duration": 數字
 }
 
-注意：
-- 如果指定多組相同設定，請展開成多個 set 物件
+重要規則（所有數值必須是純數字，不能是字串）：
+- reps 和 weight 必須是整數，不可以是字串
+- 如果是範圍（例如 5-8下），取最大值（填 8）
+- 如果重量是範圍（例如 40-50kg），取最大值（填 50）
 - 如果沒有標示重量，weight 填 0
-- duration 請根據組數自行估算
+- 如果指定多組相同設定，請展開成多個 set 物件（例如 4組×8下 → 4個 set）
+- duration 依組數估算，每組約3分鐘含休息，填整數
 
 訓練計劃：
 ${planText}`;
@@ -174,7 +177,16 @@ ${planText}`;
   const text = data.content?.[0]?.text || '';
   const match = text.match(/\[[\s\S]*\]/);
   if (!match) throw new Error('PARSE_ERROR');
-  return JSON.parse(match[0]);
+  const parsed = JSON.parse(match[0]);
+  // Sanitize: ensure all numeric fields are numbers
+  return parsed.map(item => ({
+    name:     String(item.name || '未知動作'),
+    duration: Math.round(Number(item.duration) || (item.sets?.length || 1) * 3),
+    sets: (item.sets || []).map(s => ({
+      reps:   Math.round(Number(String(s.reps).split('-').pop()) || 0),
+      weight: Math.round(Number(String(s.weight).split('-').pop()) || 0),
+    })),
+  }));
 }
 
 /**
