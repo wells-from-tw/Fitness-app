@@ -688,22 +688,10 @@ function BarcodeScannerInner({ onFound, hasKey, onRetry }) {
 
     async function start() {
       try {
-        const { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } = await import('@zxing/browser');
+        const { BrowserMultiFormatReader } = await import('@zxing/browser');
         if (cancelled) return;
 
-        const hints = new Map();
-        hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-          BarcodeFormat.EAN_13,
-          BarcodeFormat.EAN_8,
-          BarcodeFormat.UPC_A,
-          BarcodeFormat.UPC_E,
-          BarcodeFormat.CODE_128,
-          BarcodeFormat.CODE_39,
-          BarcodeFormat.QR_CODE,
-        ]);
-        hints.set(DecodeHintType.TRY_HARDER, true);
-
-        const reader = new BrowserMultiFormatReader(hints);
+        const reader = new BrowserMultiFormatReader();
         readerRef.current = reader;
 
         const constraints = {
