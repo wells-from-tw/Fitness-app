@@ -360,6 +360,7 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
           {/* ── BARCODE TAB ── */}
           {tab === 'barcode' && (
             <BarcodeTab
+              hasKey={hasKey}
               onFound={food => {
                 fill(food);
                 setServings(1);
@@ -559,6 +560,8 @@ function ServingsRow({ servings, setServings }) {
 }
 
 /* ── Open Food Facts lookup ── */
+// Returns { found, hasNutrition, name, calories, carbs, protein, fat }
+// Throws only on network error
 async function lookupBarcode(barcode) {
   const res = await fetch(
     `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_zh,product_name_en,serving_size,nutriments`,
@@ -566,31 +569,42 @@ async function lookupBarcode(barcode) {
   );
   if (!res.ok) throw new Error('網路錯誤，請稍後再試');
   const data = await res.json();
-  if (data.status !== 1) throw new Error('找不到此商品，請改用 AI 辨識或手動輸入');
+
+  if (data.status !== 1) {
+    return { found: false, hasNutrition: false, name: '', calories: 0, carbs: 0, protein: 0, fat: 0 };
+  }
 
   const p = data.product;
   const n = p.nutriments || {};
-  const name =
-    p.product_name_zh || p.product_name_en || p.product_name || '未知商品';
+  const rawName = p.product_name_zh || p.product_name_en || p.product_name || '';
 
   // Prefer per-serving values; fall back to per-100g
   const hasSrv = n['energy-kcal_serving'] != null;
-  const kcal   = Math.round(hasSrv ? n['energy-kcal_serving']      : (n['energy-kcal_100g']      ?? 0));
-  const carbs  = Math.round(hasSrv ? (n['carbohydrates_serving'] ?? 0) : (n['carbohydrates_100g'] ?? 0));
-  const pro    = Math.round(hasSrv ? (n['proteins_serving']      ?? 0) : (n['proteins_100g']      ?? 0));
-  const fat    = Math.round(hasSrv ? (n['fat_serving']           ?? 0) : (n['fat_100g']           ?? 0));
-  const suffix = hasSrv ? '' : `（每 100g）`;
+  const kcal   = Math.round(hasSrv ? n['energy-kcal_serving']         : (n['energy-kcal_100g']      ?? 0));
+  const carbs  = Math.round(hasSrv ? (n['carbohydrates_serving'] ?? 0) : (n['carbohydrates_100g']    ?? 0));
+  const pro    = Math.round(hasSrv ? (n['proteins_serving']      ?? 0) : (n['proteins_100g']         ?? 0));
+  const fat    = Math.round(hasSrv ? (n['fat_serving']           ?? 0) : (n['fat_100g']              ?? 0));
+  const suffix = (kcal > 0 && !hasSrv) ? '（每 100g）' : '';
+  const hasNutrition = kcal > 0;
 
-  return { name: name + suffix, calories: kcal, carbs, protein: pro, fat };
+  return {
+    found: true,
+    hasNutrition,
+    name:     rawName + suffix || '未知商品',
+    calories: kcal, carbs, protein: pro, fat,
+  };
 }
 
 /* ── BarcodeTab ── */
-function BarcodeTab({ onFound }) {
+function BarcodeTab({ onFound, hasKey }) {
   const videoRef    = useRef(null);
   const readerRef   = useRef(null);
-  const [phase, setPhase]   = useState('init');   // init|scanning|found|lookup|error
-  const [barcode, setBarcode] = useState('');
-  const [errMsg,  setErrMsg]  = useState('');
+  const [phase, setPhase]           = useState('init');   // init|scanning|lookup|ai-fallback|error
+  const [barcode, setBarcode]       = useState('');
+  const [errMsg,  setErrMsg]        = useState('');
+  const [fallbackName, setFallbackName] = useState('');   // pre-filled from OFF product name
+  const [aiEstState, setAiEstState] = useState('idle');   // idle|loading|error
+  const [aiEstError, setAiEstError] = useState('');
 
   const stop = useCallback(() => {
     try { readerRef.current?.reset(); } catch (_) {}
@@ -605,7 +619,6 @@ function BarcodeTab({ onFound }) {
         const { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } = await import('@zxing/browser');
         if (cancelled) return;
 
-        // Hints: support common barcode formats
         const hints = new Map();
         hints.set(DecodeHintType.POSSIBLE_FORMATS, [
           BarcodeFormat.EAN_13,
@@ -621,7 +634,6 @@ function BarcodeTab({ onFound }) {
         const reader = new BrowserMultiFormatReader(hints);
         readerRef.current = reader;
 
-        // Force rear camera on mobile
         const constraints = {
           video: {
             facingMode: { ideal: 'environment' },
@@ -641,8 +653,15 @@ function BarcodeTab({ onFound }) {
             setPhase('lookup');
             stop();
             try {
-              const food = await lookupBarcode(code);
-              if (!cancelled) onFound(food);
+              const info = await lookupBarcode(code);
+              if (info.found && info.hasNutrition) {
+                // ✅ Full data → done
+                onFound({ name: info.name, calories: info.calories, carbs: info.carbs, protein: info.protein, fat: info.fat });
+              } else {
+                // ⚠️ Not found or no nutrition → AI fallback
+                setFallbackName(info.name || '');
+                setPhase('ai-fallback');
+              }
             } catch (e) {
               setErrMsg(e.message);
               setPhase('error');
@@ -660,37 +679,101 @@ function BarcodeTab({ onFound }) {
     return () => { cancelled = true; stop(); };
   }, [onFound, stop]);
 
+  async function handleAiFallback() {
+    if (!fallbackName.trim()) return;
+    setAiEstState('loading');
+    setAiEstError('');
+    try {
+      const result = await estimateNutrition(fallbackName.trim());
+      onFound(result);
+    } catch (e) {
+      setAiEstState('error');
+      if (e.message === 'NO_KEY')           setAiEstError('尚未設定 API Key，請至設定頁面輸入。');
+      else if (e.message === 'INVALID_KEY') setAiEstError('API Key 無效，請至設定頁確認。');
+      else setAiEstError(`AI 估算失敗：${e.message}`);
+    }
+  }
+
   return (
     <div className="flex flex-col items-center gap-4">
-      {/* Video viewport */}
-      <div className="relative w-full rounded-2xl overflow-hidden bg-black" style={{ aspectRatio: '4/3' }}>
-        <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
+      {/* Video viewport — hide when in fallback/error */}
+      {(phase === 'init' || phase === 'scanning' || phase === 'lookup') && (
+        <div className="relative w-full rounded-2xl overflow-hidden bg-black" style={{ aspectRatio: '4/3' }}>
+          <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
 
-        {/* Scanning overlay */}
-        {phase === 'scanning' && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="border-2 border-blue-400 rounded-xl w-52 h-32 relative">
-              <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-400 animate-bounce" style={{ animationDuration: '1.5s' }} />
+          {phase === 'scanning' && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="border-2 border-blue-400 rounded-xl w-52 h-32 relative">
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-400 animate-bounce" style={{ animationDuration: '1.5s' }} />
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Status overlays */}
-        {phase === 'init' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-white text-sm">
-            <SpinIcon /> <span className="ml-2">啟動相機…</span>
-          </div>
-        )}
-        {phase === 'lookup' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 text-white gap-2">
-            <SpinIcon />
-            <span className="text-sm">查詢中… {barcode}</span>
-          </div>
-        )}
-      </div>
+          )}
+          {phase === 'init' && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-white text-sm">
+              <SpinIcon /> <span className="ml-2">啟動相機…</span>
+            </div>
+          )}
+          {phase === 'lookup' && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 text-white gap-2">
+              <SpinIcon />
+              <span className="text-sm">查詢資料庫… {barcode}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {phase === 'scanning' && (
         <p className="text-xs text-gray-400 text-center">將條碼對準框框內，自動偵測</p>
+      )}
+
+      {/* ── AI Fallback UI ── */}
+      {phase === 'ai-fallback' && (
+        <div className="w-full flex flex-col gap-3">
+          <div className="bg-amber-50 dark:bg-amber-900/20 rounded-2xl px-4 py-3 flex items-start gap-2">
+            <span className="text-lg">⚠️</span>
+            <div>
+              <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                {fallbackName ? '找到商品名稱，但缺少營養資料' : '資料庫查無此商品'}
+              </p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                條碼：{barcode}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">
+              商品名稱（可修改後讓 AI 估算）
+            </label>
+            <input
+              value={fallbackName}
+              onChange={e => { setFallbackName(e.target.value); setAiEstState('idle'); setAiEstError(''); }}
+              placeholder="例：統一麥香紅茶 500ml"
+              className="w-full border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+            />
+          </div>
+
+          {hasKey ? (
+            <button
+              type="button"
+              onClick={handleAiFallback}
+              disabled={!fallbackName.trim() || aiEstState === 'loading'}
+              className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              {aiEstState === 'loading'
+                ? <span className="flex items-center justify-center gap-1.5"><SpinIcon/>AI 估算中…</span>
+                : '✨ AI 自動估算營養素'}
+            </button>
+          ) : (
+            <p className="text-xs text-gray-400 text-center">請先在設定頁設定 API Key 以使用 AI 估算</p>
+          )}
+
+          {aiEstState === 'error' && (
+            <div className="bg-red-50 dark:bg-red-900/20 text-red-500 text-sm rounded-xl px-4 py-3">
+              {aiEstError}
+            </div>
+          )}
+        </div>
       )}
 
       {phase === 'error' && (
