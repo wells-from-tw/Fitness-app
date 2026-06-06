@@ -301,6 +301,93 @@ export const EXERCISES = [
     id: 'back_extension', name: '背伸展', category: 'core', type: 'strength', met: 4.0,
     muscles: { primary: ['lower_back', 'glutes'], secondary: ['hamstrings'] },
   },
+
+  // ── Hammer Strength 機械 ─────────────────────────────────
+  // 胸
+  {
+    id: 'hs_chest_press', name: 'HS 胸推', category: 'chest', type: 'strength', met: 5.0,
+    muscles: { primary: ['chest'], secondary: ['shoulders', 'triceps'] },
+  },
+  {
+    id: 'hs_incline_press', name: 'HS 上斜胸推', category: 'chest', type: 'strength', met: 5.0,
+    muscles: { primary: ['chest', 'shoulders'], secondary: ['triceps'] },
+  },
+  {
+    id: 'hs_decline_press', name: 'HS 下斜胸推', category: 'chest', type: 'strength', met: 5.0,
+    muscles: { primary: ['chest'], secondary: ['triceps'] },
+  },
+  {
+    id: 'hs_iso_chest_press', name: 'HS ISO 胸推', category: 'chest', type: 'strength', met: 5.0,
+    muscles: { primary: ['chest'], secondary: ['shoulders', 'triceps'] },
+  },
+  // 背
+  {
+    id: 'hs_iso_row', name: 'HS ISO 划船', category: 'back', type: 'strength', met: 5.0,
+    muscles: { primary: ['upper_back', 'lats'], secondary: ['biceps', 'lower_back'] },
+  },
+  {
+    id: 'hs_high_row', name: 'HS 高位划船', category: 'back', type: 'strength', met: 5.0,
+    muscles: { primary: ['upper_back', 'lats'], secondary: ['biceps'] },
+  },
+  {
+    id: 'hs_low_row', name: 'HS 低位划船', category: 'back', type: 'strength', met: 5.0,
+    muscles: { primary: ['lats', 'lower_back'], secondary: ['biceps', 'upper_back'] },
+  },
+  {
+    id: 'hs_lat_pulldown', name: 'HS 下拉', category: 'back', type: 'strength', met: 4.5,
+    muscles: { primary: ['lats'], secondary: ['biceps', 'upper_back'] },
+  },
+  {
+    id: 'hs_pullover', name: 'HS 直臂下拉', category: 'back', type: 'strength', met: 4.5,
+    muscles: { primary: ['lats'], secondary: ['chest', 'core'] },
+  },
+  // 肩
+  {
+    id: 'hs_shoulder_press', name: 'HS 肩推', category: 'shoulders', type: 'strength', met: 5.0,
+    muscles: { primary: ['shoulders'], secondary: ['triceps', 'upper_back'] },
+  },
+  {
+    id: 'hs_iso_shoulder_press', name: 'HS ISO 肩推', category: 'shoulders', type: 'strength', met: 5.0,
+    muscles: { primary: ['shoulders'], secondary: ['triceps'] },
+  },
+  // 腿
+  {
+    id: 'hs_leg_press', name: 'HS 腿推', category: 'legs', type: 'strength', met: 5.0,
+    muscles: { primary: ['quads', 'glutes'], secondary: ['hamstrings', 'calves'] },
+  },
+  {
+    id: 'hs_seated_leg_curl', name: 'HS 坐姿腿彎舉', category: 'legs', type: 'strength', met: 4.0,
+    muscles: { primary: ['hamstrings'], secondary: ['calves'] },
+  },
+  {
+    id: 'hs_lying_leg_curl', name: 'HS 俯臥腿彎舉', category: 'legs', type: 'strength', met: 4.0,
+    muscles: { primary: ['hamstrings'], secondary: ['calves', 'glutes'] },
+  },
+  {
+    id: 'hs_leg_extension', name: 'HS 腿伸展', category: 'legs', type: 'strength', met: 4.0,
+    muscles: { primary: ['quads'], secondary: [] },
+  },
+  {
+    id: 'hs_hip_adductor', name: 'HS 內收肌', category: 'legs', type: 'strength', met: 3.5,
+    muscles: { primary: ['quads'], secondary: ['glutes'] },
+  },
+  {
+    id: 'hs_hip_abductor', name: 'HS 外展肌', category: 'legs', type: 'strength', met: 3.5,
+    muscles: { primary: ['glutes'], secondary: ['quads'] },
+  },
+  // 手臂
+  {
+    id: 'hs_bicep_curl', name: 'HS 二頭彎舉', category: 'arms', type: 'strength', met: 4.0,
+    muscles: { primary: ['biceps'], secondary: ['forearms'] },
+  },
+  {
+    id: 'hs_tricep_press', name: 'HS 三頭推', category: 'arms', type: 'strength', met: 4.0,
+    muscles: { primary: ['triceps'], secondary: ['shoulders'] },
+  },
+  {
+    id: 'hs_dip', name: 'HS 撐體', category: 'arms', type: 'strength', met: 5.0,
+    muscles: { primary: ['triceps', 'chest'], secondary: ['shoulders'] },
+  },
 ];
 
 /**
