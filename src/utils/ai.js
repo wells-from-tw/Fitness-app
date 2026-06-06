@@ -32,7 +32,7 @@ function parseNutrition(text, fallbackName) {
   };
 }
 
-async function callClaude(messages) {
+async function callClaude(messages, maxTokens = 256) {
   const apiKey = loadApiKey();
   if (!apiKey) throw new Error('NO_KEY');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -43,7 +43,7 @@ async function callClaude(messages) {
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true',
     },
-    body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 256, messages }),
+    body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: maxTokens, messages }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -72,6 +72,33 @@ export async function estimateNutritionFromImage(base64Data, mimeType) {
     ],
   }]);
   return parseNutrition(data.content?.[0]?.text || '', '照片食物');
+}
+
+/** Read nutrition facts directly from a nutrition label photo. */
+export async function readNutritionLabel(base64Data, mimeType) {
+  const prompt = `請仔細閱讀這張營養標示圖片，直接讀取標示上的數值，不要估算。
+請以 JSON 格式回傳，只回傳 JSON 物件，不要加任何說明文字或 markdown：
+{
+  "name": "食品名稱（如圖片上有的話，否則填「營養標示商品」）",
+  "calories": 整數（每份/每100g的熱量，單位 kcal。若標示為 kJ 請換算：kJ ÷ 4.184）,
+  "carbs": 整數（碳水化合物，克）,
+  "protein": 整數（蛋白質，克）,
+  "fat": 整數（脂肪，克）
+}
+
+注意：
+- 優先讀取「每份」的數值，若只有「每100g」則讀取每100g
+- 若標示同時有每份和每100g，取每份的數值
+- 所有數值四捨五入為整數`;
+
+  const data = await callClaude([{
+    role: 'user',
+    content: [
+      { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64Data } },
+      { type: 'text', text: prompt },
+    ],
+  }], 512);
+  return parseNutrition(data.content?.[0]?.text || '', '營養標示商品');
 }
 
 /** AI weekly nutrition summary. stats = array of { key, calories, carbs, protein, fat, count }. */

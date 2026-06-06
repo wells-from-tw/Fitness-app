@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { estimateNutrition, estimateNutritionFromImage, parseMultipleFoods, loadApiKey } from '../utils/ai';
+import { estimateNutrition, estimateNutritionFromImage, parseMultipleFoods, readNutritionLabel, loadApiKey } from '../utils/ai';
 import { getBarcodeEntry, saveBarcodeEntry } from '../utils/storage';
 import { loadFavorites, saveFavorite, removeFavorite, loadAllDays } from '../utils/storage';
 
@@ -43,7 +43,7 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
   const [tab, setTab]           = useState(hasKey ? 'ai' : 'manual');
   const [form, setForm]         = useState(EMPTY);
   const [aiInput, setAiInput]   = useState('');
-  const [aiMode, setAiMode]     = useState('text'); // 'text' | 'photo'
+  const [aiMode, setAiMode]     = useState('text'); // 'text' | 'photo' | 'label'
   const [photo, setPhoto]       = useState(null);   // { preview, base64, mimeType }
   const [aiState, setAiState]   = useState('idle');
   const [aiError, setAiError]   = useState('');
@@ -213,11 +213,15 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
             <div className="flex flex-col gap-4">
               {/* Mode toggle */}
               <div className="flex gap-2">
-                {[{ id: 'text', label: '✏️ 文字描述' }, { id: 'photo', label: '📷 食物照片' }].map(m => (
+                {[
+                  { id: 'text',  label: '✏️ 文字描述' },
+                  { id: 'photo', label: '📷 食物照片' },
+                  { id: 'label', label: '📋 營養標示' },
+                ].map(m => (
                   <button key={m.id} type="button"
-                    onClick={() => { setAiMode(m.id); setAiState('idle'); setAiError(''); }}
+                    onClick={() => { setAiMode(m.id); setAiState('idle'); setAiError(''); setPhoto(null); setMultiResults([]); setForm(EMPTY); }}
                     className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors ${
-                      aiMode === m.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      aiMode === m.id ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-500 dark:text-gray-400 hover:bg-gray-200'
                     }`}>
                     {m.label}
                   </button>
@@ -269,6 +273,67 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
                     </div>
                   )}
                   <p className="text-xs text-gray-400 mt-1.5">Claude AI 將自動辨識照片中的食物，結果僅供參考</p>
+                </div>
+              )}
+
+              {/* Nutrition label scan */}
+              {aiMode === 'label' && (
+                <div>
+                  <input ref={fileInputRef} type="file" accept="image/*" capture="environment" hidden
+                    onChange={async e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = async ev => {
+                        const dataUrl  = ev.target.result;
+                        const base64   = dataUrl.split(',')[1];
+                        const mimeType = file.type || 'image/jpeg';
+                        setPhoto({ preview: dataUrl, base64, mimeType });
+                        setAiState('loading');
+                        setAiError('');
+                        try {
+                          const result = await readNutritionLabel(base64, mimeType);
+                          setForm({
+                            name:     result.name,
+                            calories: String(result.calories),
+                            carbs:    String(result.carbs),
+                            protein:  String(result.protein),
+                            fat:      String(result.fat),
+                          });
+                          setAiState('done');
+                        } catch (err) {
+                          setAiState('error');
+                          if (err.message === 'NO_KEY')           setAiError('尚未設定 API Key，請至「設定」頁面輸入。');
+                          else if (err.message === 'INVALID_KEY') setAiError('API Key 無效，請至設定頁確認。');
+                          else setAiError(`讀取失敗：${err.message}`);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                      e.target.value = '';
+                    }}
+                  />
+                  {!photo ? (
+                    <button type="button" onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-32 border-2 border-dashed border-emerald-200 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-emerald-50 transition-colors text-emerald-400">
+                      <span className="text-3xl">📋</span>
+                      <span className="text-sm font-medium">拍攝包裝上的營養標示</span>
+                    </button>
+                  ) : (
+                    <div className="relative">
+                      <img src={photo.preview} alt="label"
+                        className="w-full h-40 object-cover rounded-2xl"/>
+                      <button type="button" onClick={clearPhoto}
+                        className="absolute top-2 right-2 w-7 h-7 bg-black/50 hover:bg-black/70 text-white rounded-full text-sm leading-none flex items-center justify-center">
+                        ×
+                      </button>
+                      {aiState === 'loading' && (
+                        <div className="absolute inset-0 bg-white/70 rounded-2xl flex items-center justify-center gap-2 text-blue-500 text-sm font-semibold">
+                          <SpinIcon/>讀取標示中…
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1.5">AI 直接讀取標示上的數字，比估算更精準</p>
                 </div>
               )}
 
