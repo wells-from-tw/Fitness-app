@@ -44,18 +44,18 @@ export default function CalorieRing({ consumed, burned = 0, goal }) {
         >
           {/* Wave at flame tip */}
           <svg
-            style={{ position: 'absolute', top: -28, left: 0, width: '100%', height: 30 }}
+            style={{ position: 'absolute', top: -28, left: 0, width: '100%', height: 30, willChange: 'transform' }}
             viewBox="0 0 210 30"
             preserveAspectRatio="none"
           >
             <path
-              style={{ animation: 'flame-wave1 1.8s ease-in-out infinite' }}
+              style={{ animation: 'flame-wave1 1.8s ease-in-out infinite', willChange: 'transform', transformOrigin: 'center' }}
               fill={waveColor1}
               fillOpacity="0.9"
               d="M0,20 Q26,2 52,18 Q78,32 104,15 Q130,2 156,18 Q182,32 210,15 L210,30 L0,30 Z"
             />
             <path
-              style={{ animation: 'flame-wave2 2.3s ease-in-out infinite' }}
+              style={{ animation: 'flame-wave2 2.3s ease-in-out infinite', willChange: 'transform', transformOrigin: 'center' }}
               fill={waveColor2}
               fillOpacity="0.7"
               d="M0,16 Q35,4 70,20 Q105,32 140,14 Q175,2 210,18 L210,30 L0,30 Z"

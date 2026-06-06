@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { loadGoals, saveGoals, loadProfile, saveProfile, loadAllDays, loadWeightLog, loadAllExercise, loadWeightGoal, saveWeightGoal, loadMealSplit, saveMealSplit, loadWaterGoal, saveWaterGoal } from '../utils/storage';
 import { calcBMR, calcTDEE, calcBMI, bmiLabel, ACTIVITY_LEVELS } from '../utils/tdee';
 import { loadApiKey, saveApiKey } from '../utils/ai';
@@ -575,8 +575,8 @@ function WaterGoalSection() {
 
 /* ── MacroTrendChart ── */
 function MacroTrendChart() {
-  const allDays = loadAllDays();
-  const goals   = loadGoals();
+  const allDays = useMemo(() => loadAllDays(), []);
+  const goals   = useMemo(() => loadGoals(), []);
 
   const today = new Date();
   const dayKeys = Array.from({ length: 30 }, (_, i) => {
@@ -903,8 +903,8 @@ function WeightGoalSection({ currentWeight }) {
 }
 
 function WeightTrendChart({ profile }) {
-  const weightLog  = loadWeightLog();
-  const weightGoal = loadWeightGoal();
+  const weightLog  = useMemo(() => loadWeightLog(), []);
+  const weightGoal = useMemo(() => loadWeightGoal(), []);
 
   const today = new Date();
   const days = [];
