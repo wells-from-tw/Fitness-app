@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+@keyframes slide-up {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes calorie-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.8; transform: scale(1.04); }
+}
+
+@keyframes calorie-glow {
+  0%, 100% { filter: drop-shadow(0 0 0px rgba(59,130,246,0)); }
+  50%       { filter: drop-shadow(0 0 12px rgba(59,130,246,0.35)); }
+}
+
+@keyframes water-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes water-fill {
+  from { transform: scaleX(0); opacity: 0.5; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+
+@keyframes flame-wave1 {
+  0%, 100% { d: path("M0,20 Q25,2 50,18 Q75,32 100,16 Q125,2 150,18 Q175,32 200,15 Q225,2 250,18 Q275,32 300,16 Q325,2 350,18 Q375,32 400,15 L400,30 L0,30 Z"); }
+  50%       { d: path("M0,14 Q25,28 50,12 Q75,0 100,16 Q125,28 150,10 Q175,0 200,18 Q225,30 250,12 Q275,0 300,18 Q325,28 350,10 Q375,0 400,18 L400,30 L0,30 Z"); }
+}
+
+@keyframes flame-wave2 {
+  0%, 100% { d: path("M0,18 Q30,4 60,20 Q90,30 120,14 Q150,2 180,20 Q210,32 240,14 Q270,2 300,20 Q330,32 360,14 Q390,2 400,18 L400,30 L0,30 Z"); }
+  50%       { d: path("M0,12 Q30,26 60,10 Q90,0 120,16 Q150,28 180,10 Q210,0 240,18 Q270,30 300,12 Q330,0 360,18 Q390,30 400,12 L400,30 L0,30 Z"); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.25s ease-out;
+}
+
+.animate-calorie-pulse {
+  animation: calorie-pulse 3s ease-in-out infinite;
+}
+
+.animate-calorie-glow {
+  animation: calorie-glow 3s ease-in-out infinite;
+}
+
+.water-bar-filled {
+  background: linear-gradient(
+    90deg,
+    #67e8f9 0%,
+    #22d3ee 35%,
+    #a5f3fc 50%,
+    #22d3ee 65%,
+    #67e8f9 100%
+  );
+  background-size: 200% 100%;
+  animation: water-shimmer 2.5s linear infinite;
+  transform-origin: left;
+}
+
+.water-bar-new {
+  animation: water-fill 0.3s ease-out, water-shimmer 2.5s linear 0.3s infinite;
+  background: linear-gradient(
+    90deg,
+    #67e8f9 0%, #22d3ee 35%, #a5f3fc 50%, #22d3ee 65%, #67e8f9 100%
+  );
+  background-size: 200% 100%;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f8f8f8;
+    -webkit-font-smoothing: antialiased;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background-color: #0a0a0a; }
+  }
+  #root {
+    min-height: 100svh;
+  }
+}
