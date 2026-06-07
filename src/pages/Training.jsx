@@ -584,35 +584,97 @@ function ManualForm({ profile, onAdd }) {
 }
 
 /* ── PasteSheet ────────────────────────────────────────────────────────── */
+// 範本格式：動作名稱 X組 Y下 Zkg（每行一個動作；重量可省略）
+const PLAN_TEMPLATE_PROMPT = `請幫我安排今天的訓練計劃，並且每個動作都用「以下這個固定格式」單獨一行輸出，不要有其他文字混在同一行：
+
+動作名稱 X組 Y下 Zkg
+
+範例：
+槓鈴平板臥推 4組 8下 50kg
+上斜啞鈴臥推 3組 10下 20kg
+滑輪夾胸 2組 15下 12.5kg
+
+如果是徒手或不需要負重的動作，公斤數可以省略，例如：
+捲腹 3組 20下
+
+請開始安排：[在這裡描述你今天想練的部位/目標]`;
+
+function parsePlanLocally(text) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) return null;
+
+  // e.g. 槓鈴平板臥推 4組 8下 50kg / 滑輪夾胸 2組 × 15下 12.5kg / 捲腹 3組 20下
+  const RE = /^(.+?)[\s,，]+(\d+)\s*組[\s,，]*[×x*]?\s*(\d+(?:\.\d+)?)\s*下(?:[\s,，]*[×x*]?\s*(\d+(?:\.\d+)?)\s*kg)?$/i;
+
+  const items = [];
+  for (const line of lines) {
+    const m = line.match(RE);
+    if (!m) return null; // any line not matching → bail, fall back to AI
+    const [, name, setCount, reps, weight] = m;
+    const n = parseInt(setCount, 10);
+    const r = Math.round(parseFloat(reps));
+    const w = weight ? Math.round(parseFloat(weight)) : 0;
+    items.push({
+      name: name.trim(),
+      sets: Array.from({ length: n }, () => ({ reps: r, weight: w })),
+      duration: n * 3,
+    });
+  }
+  return items;
+}
+
 function PasteSheet({ profile, onAdd, onClose }) {
   const [text, setText]     = useState('');
   const [status, setStatus] = useState('idle'); // idle | loading | done | error
   const [parsed, setParsed] = useState([]);
   const [errMsg, setErrMsg] = useState('');
+  const [usedAi, setUsedAi] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const weightKg = profile?.weight ?? 70;
   const MET = 5.0;
+
+  function buildEntries(result) {
+    return result.map(item => {
+      const dur = item.duration || Math.ceil((item.sets?.length || 1) * 3) || 5;
+      return {
+        id:       Date.now() + Math.random(),
+        name:     item.name,
+        type:     'strength',
+        duration: dur,
+        calories: Math.round(MET * weightKg * dur / 60),
+        muscles:  { primary: [], secondary: [] },
+        sets:     (item.sets || []).map(s => ({ reps: s.reps || 0, weight: s.weight || 0 })),
+      };
+    });
+  }
+
+  function handleCopyTemplate() {
+    navigator.clipboard?.writeText(PLAN_TEMPLATE_PROMPT).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   async function handleParse() {
     if (!text.trim()) return;
     setStatus('loading');
     setErrMsg('');
+    setUsedAi(false);
+
+    // 1️⃣ Try local rule-based parsing first — free, instant
+    const local = parsePlanLocally(text.trim());
+    if (local && local.length > 0) {
+      setParsed(buildEntries(local));
+      setStatus('done');
+      return;
+    }
+
+    // 2️⃣ Fall back to AI for freeform / messy text
+    setUsedAi(true);
     try {
       const result = await parseWorkoutPlan(text.trim());
-      // Build log entries
-      const entries = result.map(item => {
-        const dur = item.duration || Math.ceil((item.sets?.length || 1) * 3) || 5;
-        return {
-          id:       Date.now() + Math.random(),
-          name:     item.name,
-          type:     'strength',
-          duration: dur,
-          calories: Math.round(MET * weightKg * dur / 60),
-          muscles:  { primary: [], secondary: [] },
-          sets:     (item.sets || []).map(s => ({ reps: s.reps || 0, weight: s.weight || 0 })),
-        };
-      });
-      setParsed(entries);
+      setParsed(buildEntries(result));
       setStatus('done');
     } catch (e) {
       if (e.message === 'NO_KEY') setErrMsg('請先在設定頁面輸入 API Key');
@@ -643,13 +705,21 @@ function PasteSheet({ profile, onAdd, onClose }) {
 
         {status !== 'done' ? (
           <>
-            <p className="text-xs text-gray-400 mb-3">
-              把 ChatGPT 或任何地方的訓練計劃文字貼進來，AI 會自動解析並加入今日訓練。
+            <p className="text-xs text-gray-400 mb-2">
+              把訓練計劃文字貼進來。符合「動作 X組 Y下 Zkg」格式的話會直接免費解析；
+              格式不規則時才會用 AI 輔助理解。
             </p>
+            <button
+              type="button"
+              onClick={handleCopyTemplate}
+              className="mb-3 self-start text-xs px-3 py-1.5 rounded-full bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-300 hover:bg-violet-100 transition-colors font-medium"
+            >
+              {copied ? '✅ 已複製，貼到 ChatGPT 給它吧' : '📋 複製 ChatGPT 範本提示詞'}
+            </button>
             <textarea
               value={text}
               onChange={e => setText(e.target.value)}
-              placeholder={`例如：\n臥推 4組 × 10下 80kg\n上斜臥推 3組 × 12下\nHS 胸推 4組 × 8下 60kg`}
+              placeholder={`例如：\n槓鈴平板臥推 4組 8下 50kg\n上斜啞鈴臥推 3組 10下 20kg\n滑輪夾胸 2組 15下 12.5kg`}
               rows={7}
               className="w-full border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 resize-none"
             />
@@ -660,13 +730,18 @@ function PasteSheet({ profile, onAdd, onClose }) {
               className="mt-3 w-full py-3 rounded-2xl bg-violet-500 hover:bg-violet-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-sm transition-all active:scale-95 flex items-center justify-center gap-2"
             >
               {status === 'loading'
-                ? <><span className="inline-block animate-spin">◌</span> AI 解析中…</>
-                : '✨ 解析計劃'}
+                ? <><span className="inline-block animate-spin">◌</span> 解析中…</>
+                : '解析計劃'}
             </button>
           </>
         ) : (
           <>
-            <p className="text-xs text-gray-400 mb-3">解析完成！以下動作將加入今日訓練：</p>
+            <p className="text-xs text-gray-400 mb-3">
+              解析完成！以下動作將加入今日訓練：
+              <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-semibold ${usedAi ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-300' : 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-300'}`}>
+                {usedAi ? '✨ AI 輔助解析' : '⚡ 本地免費解析'}
+              </span>
+            </p>
             <div className="flex flex-col gap-2 mb-4">
               {parsed.map((e, i) => (
                 <div key={i} className="flex items-start justify-between bg-gray-50 dark:bg-[#1a1a1a] rounded-xl px-4 py-3">
