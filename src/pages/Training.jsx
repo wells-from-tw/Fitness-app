@@ -603,19 +603,29 @@ function parsePlanLocally(text) {
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   if (lines.length === 0) return null;
 
-  // e.g. 槓鈴平板臥推 4組 8下 50kg / 滑輪夾胸 2組 × 15下 12.5kg / 捲腹 3組 20下
-  const RE = /^(.+?)[\s,，]+(\d+)\s*組[\s,，]*[×x*]?\s*(\d+(?:\.\d+)?)\s*下(?:[\s,，]*[×x*]?\s*(\d+(?:\.\d+)?)\s*kg)?$/i;
+  const DASH = '[-–—~]';                                     // -, –, —, ~ (handles ranges)
+  const SET_RE    = /(\d+)\s*組/;
+  const REPS_RE   = new RegExp(`(\\d+(?:\\.\\d+)?)\\s*(?:${DASH}\\s*(\\d+(?:\\.\\d+)?))?\\s*下`);
+  const WEIGHT_RE = new RegExp(`(?:每邊\\s*)?(\\d+(?:\\.\\d+)?)\\s*(?:${DASH}\\s*(\\d+(?:\\.\\d+)?))?\\s*kg`, 'i');
 
   const items = [];
   for (const line of lines) {
-    const m = line.match(RE);
-    if (!m) return null; // any line not matching → bail, fall back to AI
-    const [, name, setCount, reps, weight] = m;
-    const n = parseInt(setCount, 10);
-    const r = Math.round(parseFloat(reps));
-    const w = weight ? Math.round(parseFloat(weight)) : 0;
+    const setM = line.match(SET_RE);
+    const repM = line.match(REPS_RE);
+    if (!setM || !repM) return null; // doesn't match the format → bail, fall back to AI
+
+    const n = parseInt(setM[1], 10);
+    const r = Math.round(parseFloat(repM[2] || repM[1])); // range → take max
+
+    const wM = line.match(WEIGHT_RE);
+    const w  = wM ? Math.round(parseFloat(wM[2] || wM[1])) : 0; // range → take max
+
+    // 動作名稱 = 「組數」字樣之前的文字（去掉尾端分隔符號）
+    const name = line.slice(0, setM.index).trim().replace(/[\s,，｜|]+$/, '');
+    if (!name) return null;
+
     items.push({
-      name: name.trim(),
+      name,
       sets: Array.from({ length: n }, () => ({ reps: r, weight: w })),
       duration: n * 3,
     });
