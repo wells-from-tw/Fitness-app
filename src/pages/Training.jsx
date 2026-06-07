@@ -17,6 +17,7 @@ export default function Training() {
   const [durationTouched, setDurationTouched] = useState(false);
   const [sets, setSets]         = useState([{ reps: '10', weight: '20' }]);
   const [showPaste, setShowPaste] = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null);
 
   const totalBurned = useMemo(() => log.reduce((s, e) => s + (e.calories || 0), 0), [log]);
   const muscleIntensities = useMemo(() => calcMuscleIntensities(log), [log]);
@@ -137,6 +138,11 @@ export default function Training() {
     persist(log.filter(e => e.id !== id));
   }
 
+  function handleUpdateEntry(id, updates) {
+    persist(log.map(e => e.id === id ? { ...e, ...updates } : e));
+    setEditingEntry(null);
+  }
+
   function handleAddMany(entries) {
     const next = [...log, ...entries];
     persist(next);
@@ -225,7 +231,7 @@ export default function Training() {
           {log.length > 0 && (
             <div className="flex flex-col gap-2 mb-1">
               {log.map(entry => (
-                <ExerciseLogItem key={entry.id} entry={entry} onRemove={handleRemove} />
+                <ExerciseLogItem key={entry.id} entry={entry} onRemove={handleRemove} onEdit={setEditingEntry} />
               ))}
             </div>
           )}
@@ -401,12 +407,21 @@ export default function Training() {
           onClose={() => setShowPaste(false)}
         />
       )}
+
+      {editingEntry && (
+        <EditEntrySheet
+          entry={editingEntry}
+          profile={profile}
+          onSave={updates => handleUpdateEntry(editingEntry.id, updates)}
+          onClose={() => setEditingEntry(null)}
+        />
+      )}
     </div>
   );
 }
 
 /* ── Exercise log item ─────────────────────────────────────────────────── */
-function ExerciseLogItem({ entry, onRemove }) {
+function ExerciseLogItem({ entry, onRemove, onEdit }) {
   const primaryMuscles = entry.muscles?.primary ?? [];
 
   return (
@@ -458,6 +473,12 @@ function ExerciseLogItem({ entry, onRemove }) {
 
       <div className="flex items-center gap-2">
         <span className="text-sm font-bold text-orange-500 whitespace-nowrap">-{entry.calories} kcal</span>
+        <button
+          onClick={() => onEdit(entry)}
+          className="text-gray-300 hover:text-orange-400 transition-colors text-sm leading-none"
+        >
+          ✏️
+        </button>
         <button
           onClick={() => onRemove(entry.id)}
           className="text-gray-300 hover:text-red-400 transition-colors text-xl leading-none"
@@ -871,6 +892,116 @@ function TrainingCalendarHeatmap() {
           <span>累計消耗 <span className="font-semibold text-orange-500">{totalKcal} kcal</span></span>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── EditEntrySheet ────────────────────────────────────────────────────── */
+function EditEntrySheet({ entry, profile, onSave, onClose }) {
+  const weightKg = profile?.weight || 65;
+  const MET = entry.met || 5.0;
+  const isStrength = entry.type === 'strength';
+
+  const [duration, setDuration] = useState(String(entry.duration ?? 0));
+  const [sets, setSets] = useState(
+    isStrength && entry.sets?.length > 0
+      ? entry.sets.map(s => ({ reps: String(s.reps ?? 0), weight: String(s.weight ?? 0) }))
+      : [{ reps: '10', weight: '20' }]
+  );
+
+  function handleAddSet() {
+    setSets(prev => [...prev, { reps: '10', weight: prev[prev.length - 1]?.weight ?? '20' }]);
+  }
+  function handleRemoveSet(i) {
+    setSets(prev => prev.filter((_, idx) => idx !== i));
+  }
+  function handleSetChange(i, field, val) {
+    setSets(prev => prev.map((s, idx) => idx === i ? { ...s, [field]: val } : s));
+  }
+
+  const dur = Number(duration) || 0;
+  const estimated = Math.round(MET * weightKg * dur / 60);
+
+  function handleSave() {
+    const updates = {
+      duration: dur,
+      calories: estimated,
+    };
+    if (isStrength) {
+      updates.sets = sets.map(s => ({ reps: Number(s.reps) || 0, weight: Number(s.weight) || 0 }));
+    }
+    onSave(updates);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center" onClick={onClose}>
+      <div
+        className="bg-white dark:bg-[#111] rounded-t-3xl w-full max-w-lg p-6 pb-10 max-h-[85vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">✏️ 編輯 {entry.name}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">時間（分鐘）</label>
+            <input
+              type="number" min="1" max="240"
+              value={duration}
+              onChange={e => setDuration(e.target.value)}
+              className="w-full border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
+            />
+          </div>
+
+          {isStrength && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-gray-500">組數與次數</label>
+                <button onClick={handleAddSet} className="text-xs text-orange-500 font-semibold">+ 加一組</button>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {sets.map((set, i) => (
+                  <div key={i} className="flex items-center gap-1 min-w-0">
+                    <span className="text-xs text-gray-400 w-4 shrink-0 text-center">{i + 1}</span>
+                    <input
+                      type="number" min="1" max="100"
+                      value={set.reps}
+                      onChange={e => handleSetChange(i, 'reps', e.target.value)}
+                      placeholder="次"
+                      className="min-w-0 w-0 flex-1 border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-xl px-1 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-200"
+                    />
+                    <span className="text-xs text-gray-400 shrink-0">×</span>
+                    <input
+                      type="number" min="0" step="2.5"
+                      value={set.weight}
+                      onChange={e => handleSetChange(i, 'weight', e.target.value)}
+                      placeholder="kg"
+                      className="min-w-0 w-0 flex-1 border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-xl px-1 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-200"
+                    />
+                    {sets.length > 1 && (
+                      <button onClick={() => handleRemoveSet(i)} className="text-gray-300 hover:text-red-400 text-lg leading-none shrink-0 pl-0.5">×</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="bg-gray-50 dark:bg-[#1a1a1a] rounded-xl px-3 py-2 text-center">
+            <p className="text-lg font-bold text-orange-500">-{estimated} kcal</p>
+            <p className="text-xs text-gray-400">預估消耗（依時間重新計算）</p>
+          </div>
+
+          <button
+            onClick={handleSave}
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-2xl py-3 text-sm transition-colors active:scale-95"
+          >
+            儲存變更
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
