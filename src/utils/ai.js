@@ -177,34 +177,54 @@ ${mealLines.length > 0 ? mealLines.join('\n') : '今日尚無飲食記錄'}`;
  * Returns an array of { name, sets: [{reps, weight}], duration }
  */
 export async function parseWorkoutPlan(planText) {
-  const prompt = `你是一個健身紀錄助手。請解析以下訓練計劃文字，將每個動作轉換成 JSON 格式。
-只回傳 JSON 陣列，不要加任何說明文字或 markdown 代碼塊。
+  const prompt = `你是一個健身紀錄助手。使用者會貼上「任何來源、任何格式」的訓練計劃文字
+（可能來自 ChatGPT、教練、筆記、網頁等），格式可能很不規則，例如：
+- 含有標題、星期幾分類（Day 1 / 週一 / 胸推日…）
+- 編號清單、項目符號、表格式排版、emoji
+- 超級組、循環訓練（用 a/b 標示或寫在同一行）
+- 用 RPE、%1RM、「力竭」等描述強度而非具體公斤數
+- 中英文混雜、繁簡混雜
 
-每個動作格式如下：
+你的任務：盡你所能從文字中萃取出「所有運動動作」，轉換成 JSON 陣列。
+只回傳 JSON 陣列本身，不要加任何說明文字、不要 markdown 代碼塊。
+
+每個動作格式：
 {
-  "name": "動作名稱（保留原文）",
+  "name": "動作名稱（保留原文用語，不要翻譯或更改）",
   "sets": [
     { "reps": 數字, "weight": 數字 }
   ],
   "duration": 數字
 }
 
-重要規則（所有數值必須是純數字，不能是字串）：
-- reps 和 weight 必須是整數，不可以是字串
-- 如果是範圍（例如 5-8下），取最大值（填 8）
-- 如果重量是範圍（例如 40-50kg），取最大值（填 50）
-- 如果沒有標示重量，weight 填 0
-- 如果指定多組相同設定，請展開成多個 set 物件（例如 4組×8下 → 4個 set）
-- duration 依組數估算，每組約3分鐘含休息，填整數
+解析規則（所有數值必須是純數字）：
+- reps、weight 一律輸出整數，不能是字串或範圍
+- 數值為範圍時（如 5-8下、40-50kg）取最大值
+- 重量未標示、用 RPE / %1RM / 「自身體重」/ 「力竭」等描述時，weight 填 0
+- 「4組×8下」展開成 4 個 set 物件；若只說「3組」沒寫次數，reps 填 0
+- 若整段只有動作名稱、沒有組數資訊，仍要輸出該動作，sets 填一個 { reps: 0, weight: 0 }
+- 忽略標題列、星期分類、休息時間、注意事項等非動作文字，但動作本身務必保留
+- duration 依組數估算：每組約 3 分鐘（含休息），無法判斷組數時預設 duration 為 5
+- 如果完全找不到任何動作，回傳空陣列 []
 
-訓練計劃：
+訓練計劃文字：
 ${planText}`;
 
-  const data = await callClaude([{ role: 'user', content: prompt }]);
+  const data = await callClaude([{ role: 'user', content: prompt }], 4096);
   const text = data.content?.[0]?.text || '';
-  const match = text.match(/\[[\s\S]*\]/);
-  if (!match) throw new Error('PARSE_ERROR');
-  const parsed = JSON.parse(match[0]);
+  // Strip markdown code fences if present
+  const cleaned = text.replace(/```json|```/g, '');
+  const match = cleaned.match(/\[[\s\S]*\]/);
+  if (!match) throw new Error('PARSE_ERROR：AI 未回傳有效的清單格式');
+  let parsed;
+  try {
+    parsed = JSON.parse(match[0]);
+  } catch (e) {
+    throw new Error('PARSE_ERROR：AI 回傳的內容無法解析（可能太長被截斷）');
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error('PARSE_ERROR：未解析出任何動作，請確認文字內容包含具體動作名稱與組數');
+  }
   // Sanitize: ensure all numeric fields are numbers
   return parsed.map(item => ({
     name:     String(item.name || '未知動作'),

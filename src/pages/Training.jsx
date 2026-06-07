@@ -14,6 +14,7 @@ export default function Training() {
   const [cat, setCat]           = useState('cardio');
   const [selected, setSelected] = useState(null); // exercise object from DB
   const [duration, setDuration] = useState('30');
+  const [durationTouched, setDurationTouched] = useState(false);
   const [sets, setSets]         = useState([{ reps: '10', weight: '20' }]);
   const [showPaste, setShowPaste] = useState(false);
 
@@ -72,7 +73,8 @@ export default function Training() {
 
   function handleSelectExercise(ex) {
     setSelected(ex);
-    setDuration('30');
+    setDurationTouched(false);
+    setDuration(ex.type === 'strength' ? '30' : '30');
     setSets([{ reps: '10', weight: '20' }]);
   }
 
@@ -82,12 +84,25 @@ export default function Training() {
     return Math.round((ex.met || 5) * weightKg * hours);
   }
 
+  // Auto-suggest duration from set count (≈3 min/set incl. rest), unless user manually edited it
+  function autoDuration(nextLen) {
+    if (!durationTouched) setDuration(String(nextLen * 3));
+  }
+
   function handleAddSet() {
-    setSets(prev => [...prev, { reps: '10', weight: prev[prev.length - 1]?.weight ?? '20' }]);
+    setSets(prev => {
+      const next = [...prev, { reps: '10', weight: prev[prev.length - 1]?.weight ?? '20' }];
+      autoDuration(next.length);
+      return next;
+    });
   }
 
   function handleRemoveSet(i) {
-    setSets(prev => prev.filter((_, idx) => idx !== i));
+    setSets(prev => {
+      const next = prev.filter((_, idx) => idx !== i);
+      autoDuration(next.length);
+      return next;
+    });
   }
 
   function handleSetChange(i, field, val) {
@@ -114,6 +129,7 @@ export default function Training() {
     setShowAdd(false);
     setSelected(null);
     setDuration('30');
+    setDurationTouched(false);
     setSets([{ reps: '10', weight: '20' }]);
   }
 
@@ -293,7 +309,7 @@ export default function Training() {
                       <input
                         type="number" min="1" max="240"
                         value={duration}
-                        onChange={e => setDuration(e.target.value)}
+                        onChange={e => { setDuration(e.target.value); setDurationTouched(true); }}
                         className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
                       />
                     </div>
@@ -584,19 +600,24 @@ function PasteSheet({ profile, onAdd, onClose }) {
     try {
       const result = await parseWorkoutPlan(text.trim());
       // Build log entries
-      const entries = result.map(item => ({
-        id:       Date.now() + Math.random(),
-        name:     item.name,
-        type:     'strength',
-        duration: item.duration || Math.ceil((item.sets?.length || 1) * 3),
-        calories: Math.round(MET * weightKg * ((item.duration || Math.ceil((item.sets?.length || 1) * 3))) / 60),
-        muscles:  { primary: [], secondary: [] },
-        sets:     (item.sets || []).map(s => ({ reps: s.reps || 0, weight: s.weight || 0 })),
-      }));
+      const entries = result.map(item => {
+        const dur = item.duration || Math.ceil((item.sets?.length || 1) * 3) || 5;
+        return {
+          id:       Date.now() + Math.random(),
+          name:     item.name,
+          type:     'strength',
+          duration: dur,
+          calories: Math.round(MET * weightKg * dur / 60),
+          muscles:  { primary: [], secondary: [] },
+          sets:     (item.sets || []).map(s => ({ reps: s.reps || 0, weight: s.weight || 0 })),
+        };
+      });
       setParsed(entries);
       setStatus('done');
     } catch (e) {
-      setErrMsg(e.message === 'NO_KEY' ? '請先在設定頁面輸入 API Key' : '解析失敗，請確認格式或重試');
+      if (e.message === 'NO_KEY') setErrMsg('請先在設定頁面輸入 API Key');
+      else if (e.message === 'INVALID_KEY') setErrMsg('API Key 無效，請至設定頁確認');
+      else setErrMsg(e.message?.startsWith('PARSE_ERROR') ? e.message.replace('PARSE_ERROR：', '') : `解析失敗：${e.message}`);
       setStatus('error');
     }
   }
