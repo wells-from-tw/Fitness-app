@@ -665,16 +665,29 @@ function PasteSheet({ profile, onAdd, onClose }) {
   const weightKg = profile?.weight ?? 70;
   const MET = 5.0;
 
+  // 嘗試將解析出的動作名稱對應回資料庫，帶出肌群資訊（讓人體熱力圖能正確顯示）
+  function matchExercise(name) {
+    const n = name.trim().toLowerCase();
+    if (!n) return null;
+    return (
+      EXERCISES.find(e => e.name.toLowerCase() === n) ||
+      EXERCISES.find(e => n.includes(e.name.toLowerCase()) || e.name.toLowerCase().includes(n)) ||
+      null
+    );
+  }
+
   function buildEntries(result) {
     return result.map(item => {
       const dur = item.duration || Math.ceil((item.sets?.length || 1) * 3) || 5;
+      const matched = matchExercise(item.name);
       return {
         id:       Date.now() + Math.random(),
         name:     item.name,
         type:     'strength',
+        met:      matched?.met ?? MET,
         duration: dur,
-        calories: Math.round(MET * weightKg * dur / 60),
-        muscles:  { primary: [], secondary: [] },
+        calories: Math.round((matched?.met ?? MET) * weightKg * dur / 60),
+        muscles:  matched?.muscles ?? { primary: [], secondary: [] },
         sets:     (item.sets || []).map(s => ({ reps: s.reps || 0, weight: s.weight || 0 })),
       };
     });
