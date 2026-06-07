@@ -4,6 +4,7 @@ import { EXERCISES, CATEGORIES, MUSCLE_LABELS, calcMuscleIntensities, intensityC
 import { generateTrainingCard } from '../utils/shareCard';
 import { parseWorkoutPlan } from '../utils/ai';
 import MuscleHeatmap from '../components/MuscleHeatmap';
+import SharePreviewModal from '../components/SharePreviewModal';
 
 export default function Training() {
   const dateKey = getTodayKey();
@@ -22,6 +23,7 @@ export default function Training() {
   const totalBurned = useMemo(() => log.reduce((s, e) => s + (e.calories || 0), 0), [log]);
   const muscleIntensities = useMemo(() => calcMuscleIntensities(log), [log]);
   const [sharing, setSharing] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
 
   async function handleShare() {
     if (sharing || log.length === 0) return;
@@ -47,18 +49,7 @@ export default function Training() {
         backSvgEl,
       });
 
-      const res  = await fetch(dataUrl);
-      const blob = await res.blob();
-      const file = new File([blob], 'wisefitness-training.png', { type: 'image/png' });
-
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Fitness 今日訓練' });
-      } else {
-        const a = document.createElement('a');
-        a.href = dataUrl;
-        a.download = 'wisefitness-training.png';
-        a.click();
-      }
+      setPreviewUrl(dataUrl);
     } catch (e) {
       if (e.name !== 'AbortError') console.error(e);
     }
@@ -399,6 +390,15 @@ export default function Training() {
         )}
 
       </div>
+
+      {previewUrl && (
+        <SharePreviewModal
+          dataUrl={previewUrl}
+          filename="wisefitness-training.png"
+          title="Fitness 今日訓練"
+          onClose={() => setPreviewUrl(null)}
+        />
+      )}
 
       {showPaste && (
         <PasteSheet

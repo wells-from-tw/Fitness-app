@@ -10,6 +10,7 @@ import ExerciseCard from '../components/ExerciseCard';
 import { getTodayKey, loadWeightLog, loadWaterLog, loadExerciseLog, loadDayData, loadWaterGoal, loadAllDays, loadGoals } from '../utils/storage';
 import { getDailySummary, getMealSuggestion, getAiConsultation } from '../utils/ai';
 import { generateShareCard } from '../utils/shareCard';
+import SharePreviewModal from '../components/SharePreviewModal';
 
 function getWeekKey() {
   const d = new Date();
@@ -46,6 +47,7 @@ export default function Home() {
   const [suggestionModal, setSuggestionModal] = useState(null);
   const [consultOpen,     setConsultOpen]     = useState(false);
   const [sharing,         setSharing]         = useState(false);
+  const [previewUrl,      setPreviewUrl]      = useState(null);
 
   async function handleShare() {
     if (sharing) return;
@@ -68,20 +70,7 @@ export default function Home() {
         weight,
       });
 
-      // convert dataURL → Blob
-      const res  = await fetch(dataUrl);
-      const blob = await res.blob();
-      const file = new File([blob], 'wisefitness-today.png', { type: 'image/png' });
-
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Fitness 今日進度' });
-      } else {
-        // fallback: download
-        const a = document.createElement('a');
-        a.href = dataUrl;
-        a.download = 'wisefitness-today.png';
-        a.click();
-      }
+      setPreviewUrl(dataUrl);
     } catch (e) {
       if (e.name !== 'AbortError') console.error(e);
     }
@@ -217,6 +206,15 @@ export default function Home() {
       >
         +
       </button>
+
+      {previewUrl && (
+        <SharePreviewModal
+          dataUrl={previewUrl}
+          filename="wisefitness-today.png"
+          title="Fitness 今日進度"
+          onClose={() => setPreviewUrl(null)}
+        />
+      )}
 
       {modal && (
         <AddFoodModal
