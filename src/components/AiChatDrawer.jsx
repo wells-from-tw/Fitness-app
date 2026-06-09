@@ -20,7 +20,7 @@ function saveHistory(mode, msgs) {
   localStorage.setItem(STORAGE_KEYS[mode], JSON.stringify(trimmed));
 }
 
-export default function AiChatDrawer({ mode, onConfirmExercises, onConfirmMeals, onClose }) {
+export default function AiChatDrawer({ mode, context, onConfirmExercises, onConfirmMeals, onClose }) {
   const [messages, setMessages] = useState(() => loadHistory(mode));
   const [input, setInput]       = useState('');
   const [loading, setLoading]   = useState(false);
@@ -50,7 +50,7 @@ export default function AiChatDrawer({ mode, onConfirmExercises, onConfirmMeals,
     try {
       let reply;
       if (mode === 'training') {
-        reply = await chatTraining(next);
+        reply = await chatTraining(next, context);
         const assistantMsg = {
           role: 'assistant',
           content: reply.message,

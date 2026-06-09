@@ -195,3 +195,37 @@ export function deleteBarcodeEntry(barcode) {
   delete cache[barcode];
   localStorage.setItem(BARCODE_CACHE_KEY, JSON.stringify(cache));
 }
+
+/** Training preferences: equipment, split, goal */
+const TRAINING_PREFS_KEY = 'wisefitness_training_prefs';
+
+export const DEFAULT_TRAINING_PREFS = {
+  goal: 'muscle',          // 'muscle' | 'fat_loss' | 'maintain'
+  equipment: [],           // e.g. ['barbell','dumbbell','machine','bodyweight','cable','kettlebell']
+  split: {                 // 0=Sun,1=Mon,...,6=Sat → muscle group label or 'rest'
+    0: 'rest',
+    1: 'chest',
+    2: 'back',
+    3: 'legs',
+    4: 'shoulders',
+    5: 'arms',
+    6: 'rest',
+  },
+};
+
+export function loadTrainingPrefs() {
+  const raw = localStorage.getItem(TRAINING_PREFS_KEY);
+  if (!raw) return { ...DEFAULT_TRAINING_PREFS, split: { ...DEFAULT_TRAINING_PREFS.split } };
+  try {
+    const saved = JSON.parse(raw);
+    return {
+      ...DEFAULT_TRAINING_PREFS,
+      ...saved,
+      split: { ...DEFAULT_TRAINING_PREFS.split, ...saved.split },
+    };
+  } catch { return { ...DEFAULT_TRAINING_PREFS, split: { ...DEFAULT_TRAINING_PREFS.split } }; }
+}
+
+export function saveTrainingPrefs(prefs) {
+  localStorage.setItem(TRAINING_PREFS_KEY, JSON.stringify(prefs));
+}

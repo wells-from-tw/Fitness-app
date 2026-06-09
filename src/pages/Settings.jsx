@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
-import { loadGoals, saveGoals, loadProfile, saveProfile, loadAllDays, loadWeightLog, loadAllExercise, loadWeightGoal, saveWeightGoal, loadMealSplit, saveMealSplit, loadWaterGoal, saveWaterGoal } from '../utils/storage';
+import { loadGoals, saveGoals, loadProfile, saveProfile, loadAllDays, loadWeightLog, loadAllExercise, loadWeightGoal, saveWeightGoal, loadMealSplit, saveMealSplit, loadWaterGoal, saveWaterGoal, loadTrainingPrefs, saveTrainingPrefs } from '../utils/storage';
 import { calcBMR, calcTDEE, calcBMI, bmiLabel, ACTIVITY_LEVELS } from '../utils/tdee';
 import { loadApiKey, saveApiKey } from '../utils/ai';
 
@@ -361,6 +361,9 @@ export default function Settings() {
 
         {/* ── API Key ── */}
         <ApiKeySection />
+
+        {/* ── 訓練偏好 ── */}
+        <TrainingPrefsSection />
 
         {/* ── 資料管理 ── */}
         <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
@@ -1089,6 +1092,149 @@ function ApiKeySection() {
           </button>
         )}
       </div>
+    </section>
+  );
+}
+
+/* ── TrainingPrefsSection ── */
+const EQUIPMENT_OPTIONS = [
+  { id: 'barbell',    label: '槓鈴',    emoji: '🏋️' },
+  { id: 'dumbbell',   label: '啞鈴',    emoji: '💪' },
+  { id: 'machine',    label: '機械/滑輪', emoji: '⚙️' },
+  { id: 'cable',      label: '纜繩',    emoji: '🔗' },
+  { id: 'kettlebell', label: '壺鈴',    emoji: '🔔' },
+  { id: 'resistance', label: '彈力帶',  emoji: '🔁' },
+  { id: 'bodyweight', label: '自重',    emoji: '🤸' },
+];
+
+const GOAL_OPTIONS = [
+  { id: 'muscle',   label: '增肌' },
+  { id: 'fat_loss', label: '減脂' },
+  { id: 'maintain', label: '維持體能' },
+];
+
+const SPLIT_OPTIONS = [
+  { id: 'chest',    label: '胸' },
+  { id: 'back',     label: '背' },
+  { id: 'legs',     label: '腿' },
+  { id: 'shoulders',label: '肩' },
+  { id: 'arms',     label: '手臂' },
+  { id: 'core',     label: '核心' },
+  { id: 'cardio',   label: '有氧' },
+  { id: 'fullbody', label: '全身' },
+  { id: 'rest',     label: '休息' },
+];
+
+const DAY_LABELS_PREFS = ['日', '一', '二', '三', '四', '五', '六'];
+
+function TrainingPrefsSection() {
+  const [prefs, setPrefs] = useState(() => loadTrainingPrefs());
+  const [saved, setSaved] = useState(false);
+
+  function toggleEquipment(id) {
+    setPrefs(p => ({
+      ...p,
+      equipment: p.equipment.includes(id)
+        ? p.equipment.filter(e => e !== id)
+        : [...p.equipment, id],
+    }));
+  }
+
+  function setSplitDay(wd, val) {
+    setPrefs(p => ({ ...p, split: { ...p.split, [wd]: val } }));
+  }
+
+  function handleSave() {
+    saveTrainingPrefs(prefs);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  return (
+    <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5 flex flex-col gap-5">
+      <div className="flex items-center gap-2">
+        <span className="text-lg">🤖</span>
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">AI 訓練助手偏好</h2>
+      </div>
+      <p className="text-xs text-gray-400 -mt-3">設定後 AI 會記住你的習慣，主動建議今天練什麼。</p>
+
+      {/* Goal */}
+      <div>
+        <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">訓練目標</p>
+        <div className="flex gap-2">
+          {GOAL_OPTIONS.map(g => (
+            <button
+              key={g.id}
+              onClick={() => setPrefs(p => ({ ...p, goal: g.id }))}
+              className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                prefs.goal === g.id
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              {g.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Equipment */}
+      <div>
+        <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">可用器材</p>
+        <div className="flex flex-wrap gap-2">
+          {EQUIPMENT_OPTIONS.map(eq => (
+            <button
+              key={eq.id}
+              onClick={() => toggleEquipment(eq.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                prefs.equipment.includes(eq.id)
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              <span>{eq.emoji}</span>{eq.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Weekly split */}
+      <div>
+        <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">每週訓練分配</p>
+        <div className="flex flex-col gap-2">
+          {[0,1,2,3,4,5,6].map(wd => (
+            <div key={wd} className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-gray-400 w-6 shrink-0">週{DAY_LABELS_PREFS[wd]}</span>
+              <div className="flex gap-1 flex-wrap">
+                {SPLIT_OPTIONS.map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setSplitDay(wd, opt.id)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                      prefs.split[wd] === opt.id
+                        ? opt.id === 'rest'
+                          ? 'bg-gray-400 text-white'
+                          : 'bg-orange-500 text-white'
+                        : 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-400'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <button
+        onClick={handleSave}
+        className={`w-full py-3 rounded-2xl text-sm font-semibold text-white transition-all active:scale-95 ${
+          saved ? 'bg-green-500' : 'bg-orange-500 hover:bg-orange-600'
+        }`}
+      >
+        {saved ? '✓ 已儲存' : '儲存偏好設定'}
+      </button>
     </section>
   );
 }

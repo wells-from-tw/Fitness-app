@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { loadExerciseLog, saveExerciseLog, loadAllExercise, loadProfile, getTodayKey } from '../utils/storage';
+import { loadExerciseLog, saveExerciseLog, loadAllExercise, loadProfile, getTodayKey, loadTrainingPrefs } from '../utils/storage';
 import { EXERCISES, CATEGORIES, MUSCLE_LABELS, calcMuscleIntensities, intensityColor } from '../data/exercises';
 import { generateTrainingCard } from '../utils/shareCard';
 import { parseWorkoutPlan } from '../utils/ai';
@@ -480,9 +480,23 @@ export default function Training() {
         />
       )}
 
-      {showChat && (
+      {showChat && (() => {
+        // Build context: prefs + last 7 days logs
+        const prefs = loadTrainingPrefs();
+        const allEx = loadAllExercise();
+        const recentLogs = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(); d.setDate(d.getDate() - i);
+          const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          const dayNames = ['週日','週一','週二','週三','週四','週五','週六'];
+          return {
+            dateLabel: `${d.getMonth()+1}/${d.getDate()}（${dayNames[d.getDay()]}）`,
+            exercises: allEx[key] || [],
+          };
+        });
+        return (
         <AiChatDrawer
           mode="training"
+          context={{ prefs, recentLogs }}
           onConfirmExercises={entries => handleAddMany(entries.map(e => {
             const matched = EXERCISES.find(ex => ex.name.toLowerCase() === e.name.toLowerCase())
               || EXERCISES.find(ex => e.name.toLowerCase().includes(ex.name.toLowerCase()) || ex.name.toLowerCase().includes(e.name.toLowerCase()));
@@ -502,7 +516,8 @@ export default function Training() {
           }))}
           onClose={() => setShowChat(false)}
         />
-      )}
+        );
+      })()}
     </div>
   );
 }

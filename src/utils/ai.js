@@ -282,11 +282,97 @@ export async function parseMultipleFoods(description) {
    messages: [{role:'user'|'assistant', content:string}]
    Returns: { message: string, exercises: array|null }
 ───────────────────────────────────────────── */
-const TRAINING_SYSTEM = `你是一位親切專業的台灣健身教練助理。使用者會告訴你今天想做什麼運動，你要和使用者討論並規劃具體的訓練計劃。
+const EQUIPMENT_LABELS = {
+  barbell:    '槓鈴',
+  dumbbell:   '啞鈴',
+  machine:    '機械/滑輪',
+  bodyweight: '自身體重',
+  cable:      '纜繩',
+  kettlebell: '壺鈴',
+  resistance: '彈力帶',
+};
+
+const SPLIT_LABELS = {
+  chest:     '胸',
+  back:      '背',
+  legs:      '腿',
+  shoulders: '肩',
+  arms:      '手臂（二頭＋三頭）',
+  core:      '核心',
+  cardio:    '有氧',
+  fullbody:  '全身',
+  rest:      '休息',
+};
+
+const GOAL_LABELS = {
+  muscle:    '增肌',
+  fat_loss:  '減脂',
+  maintain:  '維持體能',
+};
+
+const DAY_NAMES = ['週日','週一','週二','週三','週四','週五','週六'];
+
+function buildTrainingSystem(ctx) {
+  const today = new Date();
+  const todayWD = today.getDay();
+  const dateStr = `${today.getMonth()+1}月${today.getDate()}日（${DAY_NAMES[todayWD]}）`;
+
+  let contextBlock = '';
+
+  if (ctx) {
+    const { prefs, recentLogs } = ctx;
+
+    // Goal
+    if (prefs?.goal) {
+      contextBlock += `\n訓練目標：${GOAL_LABELS[prefs.goal] || prefs.goal}`;
+    }
+
+    // Equipment
+    if (prefs?.equipment?.length > 0) {
+      const eq = prefs.equipment.map(e => EQUIPMENT_LABELS[e] || e).join('、');
+      contextBlock += `\n可用器材：${eq}`;
+    } else {
+      contextBlock += `\n可用器材：未設定（預設可建議自重動作）`;
+    }
+
+    // Today's split
+    if (prefs?.split) {
+      const todayGroup = prefs.split[todayWD];
+      if (todayGroup && todayGroup !== 'rest') {
+        contextBlock += `\n今日訓練分配：${SPLIT_LABELS[todayGroup] || todayGroup}日`;
+      } else if (todayGroup === 'rest') {
+        contextBlock += `\n今日訓練分配：原定休息日（但使用者可能想練輕鬆一點）`;
+      }
+      // Full split
+      const splitSummary = Object.entries(prefs.split)
+        .map(([wd, grp]) => `${DAY_NAMES[wd]}=${SPLIT_LABELS[grp] || grp}`)
+        .join('、');
+      contextBlock += `\n每週分配：${splitSummary}`;
+    }
+
+    // Recent logs
+    if (recentLogs?.length > 0) {
+      contextBlock += `\n\n最近 7 天訓練紀錄：`;
+      recentLogs.forEach(({ dateLabel, exercises }) => {
+        if (exercises.length === 0) {
+          contextBlock += `\n  ${dateLabel}：休息`;
+        } else {
+          const names = [...new Set(exercises.map(e => e.name))].join('、');
+          const muscles = [...new Set(exercises.flatMap(e => e.muscles?.primary || []))];
+          const muscleStr = muscles.length > 0 ? `（${muscles.join('/')}）` : '';
+          contextBlock += `\n  ${dateLabel}：${names}${muscleStr}`;
+        }
+      });
+    }
+  }
+
+  return `你是一位親切專業的台灣健身教練助理。今天是 ${dateStr}。
+${contextBlock ? `\n【使用者資料】${contextBlock}\n` : ''}
+根據以上資料，主動提醒使用者：哪些部位需要休息、今天適合練什麼、推薦的器材動作。
 
 每次回覆都必須只輸出一個 JSON 物件，格式如下，不要加任何說明文字或 markdown：
 {
-  "message": "你的回覆（繁體中文，親切自然，2-4句）",
+  "message": "你的回覆（繁體中文，親切自然，2-4句，可引用使用者的訓練紀錄給出具體建議）",
   "exercises": [
     {
       "name": "動作名稱（繁體中文）",
@@ -300,11 +386,14 @@ const TRAINING_SYSTEM = `你是一位親切專業的台灣健身教練助理。�
 - exercises 在討論中若已有具體計劃就輸出，否則輸出 null
 - 使用者要求修改時，輸出更新後的完整 exercises
 - weight 未指定時填 0，cardio 類型 sets 填 []
+- 只推薦使用者擁有器材的動作
 - 語氣輕鬆，可加 emoji`;
+}
 
-export async function chatTraining(messages) {
+export async function chatTraining(messages, ctx = null) {
+  const system = buildTrainingSystem(ctx);
   const apiMsgs = messages.map(m => ({ role: m.role, content: m.content }));
-  const data = await callClaude(apiMsgs, 1024, TRAINING_SYSTEM);
+  const data = await callClaude(apiMsgs, 1024, system);
   const text = data.content?.[0]?.text || '';
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) return { message: text, exercises: null };
