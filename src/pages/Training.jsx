@@ -5,6 +5,7 @@ import { generateTrainingCard } from '../utils/shareCard';
 import { parseWorkoutPlan } from '../utils/ai';
 import MuscleHeatmap from '../components/MuscleHeatmap';
 import SharePreviewModal from '../components/SharePreviewModal';
+import AiChatDrawer from '../components/AiChatDrawer';
 
 function offsetToKey(offset) {
   const d = new Date();
@@ -49,8 +50,9 @@ export default function Training() {
 
   const totalBurned = useMemo(() => log.reduce((s, e) => s + (e.calories || 0), 0), [log]);
   const muscleIntensities = useMemo(() => calcMuscleIntensities(log), [log]);
-  const [sharing, setSharing] = useState(false);
+  const [sharing, setSharing]     = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [showChat, setShowChat]   = useState(false);
 
   async function handleShare() {
     if (sharing || log.length === 0) return;
@@ -443,6 +445,15 @@ export default function Training() {
 
       </div>
 
+      {/* AI Chat FAB */}
+      <button
+        onClick={() => setShowChat(true)}
+        className="fixed bottom-24 right-5 z-40 w-14 h-14 rounded-full bg-violet-500 hover:bg-violet-600 text-white shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center text-2xl"
+        aria-label="AI 訓練助手"
+      >
+        🤖
+      </button>
+
       {previewUrl && (
         <SharePreviewModal
           dataUrl={previewUrl}
@@ -466,6 +477,30 @@ export default function Training() {
           profile={profile}
           onSave={updates => handleUpdateEntry(editingEntry.id, updates)}
           onClose={() => setEditingEntry(null)}
+        />
+      )}
+
+      {showChat && (
+        <AiChatDrawer
+          mode="training"
+          onConfirmExercises={entries => handleAddMany(entries.map(e => {
+            const matched = EXERCISES.find(ex => ex.name.toLowerCase() === e.name.toLowerCase())
+              || EXERCISES.find(ex => e.name.toLowerCase().includes(ex.name.toLowerCase()) || ex.name.toLowerCase().includes(e.name.toLowerCase()));
+            const weightKg = profile.weight || 65;
+            const MET = matched?.met ?? 5;
+            const dur = e.duration || Math.ceil((e.sets?.length || 1) * 3) || 5;
+            return {
+              id:       Date.now() + Math.random(),
+              name:     e.name,
+              type:     matched?.type ?? 'strength',
+              met:      MET,
+              duration: dur,
+              calories: Math.round(MET * weightKg * dur / 60),
+              muscles:  matched?.muscles ?? { primary: [], secondary: [] },
+              sets:     (e.sets || []),
+            };
+          }))}
+          onClose={() => setShowChat(false)}
         />
       )}
     </div>

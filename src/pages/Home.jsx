@@ -11,6 +11,7 @@ import { getTodayKey, loadWeightLog, loadWaterLog, loadExerciseLog, loadDayData,
 import { getDailySummary, getMealSuggestion, getAiConsultation } from '../utils/ai';
 import { generateShareCard } from '../utils/shareCard';
 import SharePreviewModal from '../components/SharePreviewModal';
+import AiChatDrawer from '../components/AiChatDrawer';
 
 function getWeekKey() {
   const d = new Date();
@@ -48,6 +49,7 @@ export default function Home() {
   const [consultOpen,     setConsultOpen]     = useState(false);
   const [sharing,         setSharing]         = useState(false);
   const [previewUrl,      setPreviewUrl]      = useState(null);
+  const [showChat,        setShowChat]        = useState(false);
 
   async function handleShare() {
     if (sharing) return;
@@ -198,13 +200,22 @@ export default function Home() {
         </button>
       </main>
 
-      {/* FAB */}
+      {/* FAB — add food */}
       <button
         onClick={() => setModal('breakfast')}
         className="fixed bottom-20 right-5 z-40 w-14 h-14 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center text-3xl leading-none"
         aria-label="新增食物"
       >
         +
+      </button>
+
+      {/* FAB — AI chat */}
+      <button
+        onClick={() => setShowChat(true)}
+        className="fixed bottom-36 right-5 z-40 w-12 h-12 rounded-full bg-violet-500 hover:bg-violet-600 text-white shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center text-xl"
+        aria-label="AI 飲食助手"
+      >
+        🤖
       </button>
 
       {previewUrl && (
@@ -273,6 +284,17 @@ export default function Home() {
             <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{summaryModal}</p>
           </div>
         </div>
+      )}
+
+      {showChat && (
+        <AiChatDrawer
+          mode="nutrition"
+          onConfirmMeals={(meals, mealType) => {
+            const type = mealType || 'snack';
+            meals.forEach(food => addFood(type, food));
+          }}
+          onClose={() => setShowChat(false)}
+        />
       )}
     </div>
   );

@@ -32,9 +32,11 @@ function parseNutrition(text, fallbackName) {
   };
 }
 
-async function callClaude(messages, maxTokens = 256) {
+async function callClaude(messages, maxTokens = 256, system = null) {
   const apiKey = loadApiKey();
   if (!apiKey) throw new Error('NO_KEY');
+  const body = { model: 'claude-haiku-4-5', max_tokens: maxTokens, messages };
+  if (system) body.system = system;
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -43,7 +45,7 @@ async function callClaude(messages, maxTokens = 256) {
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true',
     },
-    body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: maxTokens, messages }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -273,4 +275,105 @@ export async function parseMultipleFoods(description) {
     protein:  Math.round(Number(item.protein)  || 0),
     fat:      Math.round(Number(item.fat)      || 0),
   }));
+}
+
+/* ─────────────────────────────────────────────
+   AI Chat — Training mode
+   messages: [{role:'user'|'assistant', content:string}]
+   Returns: { message: string, exercises: array|null }
+───────────────────────────────────────────── */
+const TRAINING_SYSTEM = `你是一位親切專業的台灣健身教練助理。使用者會告訴你今天想做什麼運動，你要和使用者討論並規劃具體的訓練計劃。
+
+每次回覆都必須只輸出一個 JSON 物件，格式如下，不要加任何說明文字或 markdown：
+{
+  "message": "你的回覆（繁體中文，親切自然，2-4句）",
+  "exercises": [
+    {
+      "name": "動作名稱（繁體中文）",
+      "sets": [{"reps": 整數, "weight": 整數}],
+      "duration": 整數（分鐘）
+    }
+  ]
+}
+
+規則：
+- exercises 在討論中若已有具體計劃就輸出，否則輸出 null
+- 使用者要求修改時，輸出更新後的完整 exercises
+- weight 未指定時填 0，cardio 類型 sets 填 []
+- 語氣輕鬆，可加 emoji`;
+
+export async function chatTraining(messages) {
+  const apiMsgs = messages.map(m => ({ role: m.role, content: m.content }));
+  const data = await callClaude(apiMsgs, 1024, TRAINING_SYSTEM);
+  const text = data.content?.[0]?.text || '';
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return { message: text, exercises: null };
+  try {
+    const parsed = JSON.parse(jsonMatch[0]);
+    const exercises = Array.isArray(parsed.exercises) && parsed.exercises.length > 0
+      ? parsed.exercises.map(e => ({
+          name:     String(e.name || '未知動作'),
+          duration: Math.round(Number(e.duration) || 5),
+          sets: (e.sets || []).map(s => ({
+            reps:   Math.round(Number(s.reps)   || 0),
+            weight: Math.round(Number(s.weight) || 0),
+          })),
+        }))
+      : null;
+    return { message: String(parsed.message || ''), exercises };
+  } catch {
+    return { message: text, exercises: null };
+  }
+}
+
+/* ─────────────────────────────────────────────
+   AI Chat — Nutrition mode
+   Returns: { message: string, mealType: string|null, meals: array|null }
+───────────────────────────────────────────── */
+const NUTRITION_SYSTEM = `你是一位親切專業的台灣營養師助理。使用者會告訴你今天吃了什麼或想記錄什麼餐點，你要幫他辨識食物、估算營養並記錄。
+
+每次回覆都必須只輸出一個 JSON 物件，格式如下，不要加任何說明文字或 markdown：
+{
+  "message": "你的回覆（繁體中文，親切自然，2-4句）",
+  "mealType": "breakfast"|"lunch"|"dinner"|"snack"|null,
+  "meals": [
+    {
+      "name": "食物名稱（繁體中文，簡短清楚）",
+      "calories": 整數,
+      "carbs": 整數,
+      "protein": 整數,
+      "fat": 整數
+    }
+  ]
+}
+
+規則：
+- 若使用者說的食物夠具體，meals 就輸出估算結果，否則輸出 null
+- mealType 根據上下文判斷（早餐/午餐/晚餐/點心），無法判斷時輸出 null
+- 台灣在地食物請參考在地熱量（如便利商店、夜市、早餐店等）
+- 語氣輕鬆，可加 emoji`;
+
+export async function chatNutrition(messages) {
+  const apiMsgs = messages.map(m => ({ role: m.role, content: m.content }));
+  const data = await callClaude(apiMsgs, 1024, NUTRITION_SYSTEM);
+  const text = data.content?.[0]?.text || '';
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return { message: text, mealType: null, meals: null };
+  try {
+    const parsed = JSON.parse(jsonMatch[0]);
+    const meals = Array.isArray(parsed.meals) && parsed.meals.length > 0
+      ? parsed.meals.map(f => ({
+          name:     String(f.name     || '未知食物'),
+          calories: Math.round(Number(f.calories) || 0),
+          carbs:    Math.round(Number(f.carbs)    || 0),
+          protein:  Math.round(Number(f.protein)  || 0),
+          fat:      Math.round(Number(f.fat)      || 0),
+        }))
+      : null;
+    const validTypes = ['breakfast','lunch','dinner','snack'];
+    const mealType = validTypes.includes(parsed.mealType) ? parsed.mealType : null;
+    return { message: String(parsed.message || ''), mealType, meals };
+  } catch {
+    return { message: text, mealType: null, meals: null };
+  }
 }
