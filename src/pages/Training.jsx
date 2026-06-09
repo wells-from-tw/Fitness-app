@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { loadExerciseLog, saveExerciseLog, loadAllExercise, loadProfile, getTodayKey } from '../utils/storage';
 import { EXERCISES, CATEGORIES, MUSCLE_LABELS, calcMuscleIntensities, intensityColor } from '../data/exercises';
 import { generateTrainingCard } from '../utils/shareCard';
@@ -6,11 +6,38 @@ import { parseWorkoutPlan } from '../utils/ai';
 import MuscleHeatmap from '../components/MuscleHeatmap';
 import SharePreviewModal from '../components/SharePreviewModal';
 
-export default function Training() {
-  const dateKey = getTodayKey();
-  const profile = useMemo(() => loadProfile(), []);
+function offsetToKey(offset) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
-  const [log, setLog]           = useState(() => loadExerciseLog(dateKey));
+function viewLabel(offset) {
+  if (offset === 0) return '今天';
+  if (offset === -1) return '昨天';
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return `${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
+export default function Training() {
+  const todayKey = getTodayKey();
+  const profile  = useMemo(() => loadProfile(), []);
+
+  const [viewOffset, setViewOffset] = useState(0);
+  const dateKey = useMemo(() => offsetToKey(viewOffset), [viewOffset]);
+  const isToday = viewOffset === 0;
+
+  const [log, setLog] = useState(() => loadExerciseLog(todayKey));
+
+  // Reload log when date changes
+  useEffect(() => {
+    setLog(loadExerciseLog(dateKey));
+    setShowAdd(false);
+  }, [dateKey]);
   const [showAdd, setShowAdd]   = useState(false);
   const [cat, setCat]           = useState('cardio');
   const [selected, setSelected] = useState(null); // exercise object from DB
@@ -156,36 +183,53 @@ export default function Training() {
     <div className="min-h-screen bg-[#f8f8f8] dark:bg-[#0a0a0a] pb-28">
       {/* Header */}
       <div className="bg-[#f8f8f8]/90 dark:bg-[#0a0a0a]/95 backdrop-blur-md sticky top-0 z-30 border-b border-gray-100 dark:border-[#1a1a1a] px-4 pt-12 pb-4">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
-          <div>
+        <div className="max-w-lg mx-auto flex flex-col gap-2">
+          {/* Row 1: title + actions */}
+          <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">🏋️ 訓練</h1>
-            <p className="text-xs text-gray-400 mt-0.5">{dateKey}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {totalBurned > 0 && (
-              <div className="bg-orange-50 dark:bg-orange-900/20 rounded-2xl px-4 py-2 text-center">
-                <p className="text-lg font-bold text-orange-500">-{totalBurned}</p>
-                <p className="text-xs text-gray-400">kcal 消耗</p>
-              </div>
-            )}
-            <button
-              onClick={() => setShowPaste(true)}
-              className="flex items-center gap-1 px-3 py-2 rounded-2xl bg-violet-500 hover:bg-violet-600 text-white text-xs font-semibold transition-all active:scale-95"
-            >
-              📋 貼上計劃
-            </button>
-            {log.length > 0 && (
+            <div className="flex items-center gap-2">
+              {totalBurned > 0 && (
+                <div className="bg-orange-50 dark:bg-orange-900/20 rounded-2xl px-3 py-1.5 text-center">
+                  <p className="text-sm font-bold text-orange-500">-{totalBurned} kcal</p>
+                </div>
+              )}
               <button
-                onClick={handleShare}
-                disabled={sharing}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-semibold shadow hover:opacity-90 disabled:opacity-60 transition-all active:scale-95"
+                onClick={() => setShowPaste(true)}
+                className="flex items-center gap-1 px-3 py-2 rounded-2xl bg-violet-500 hover:bg-violet-600 text-white text-xs font-semibold transition-all active:scale-95"
               >
-                {sharing
-                  ? <span className="inline-block animate-spin">◌</span>
-                  : '📤'}
-                <span>{sharing ? '生成中…' : '分享'}</span>
+                📋 貼上計劃
               </button>
-            )}
+              {log.length > 0 && (
+                <button
+                  onClick={handleShare}
+                  disabled={sharing}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-semibold shadow hover:opacity-90 disabled:opacity-60 transition-all active:scale-95"
+                >
+                  {sharing ? <span className="inline-block animate-spin">◌</span> : '📤'}
+                  <span>{sharing ? '生成中…' : '分享'}</span>
+                </button>
+              )}
+            </div>
+          </div>
+          {/* Row 2: date navigator */}
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => setViewOffset(o => o - 1)}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-[#1e1e1e] text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2a2a2a] active:scale-95 transition-all text-sm font-bold"
+            >
+              ‹
+            </button>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 min-w-[72px]">{viewLabel(viewOffset)}</p>
+              <p className="text-[11px] text-gray-400">{dateKey}</p>
+            </div>
+            <button
+              onClick={() => setViewOffset(o => Math.min(0, o + 1))}
+              disabled={isToday}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-[#1e1e1e] text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2a2a2a] disabled:opacity-30 active:scale-95 transition-all text-sm font-bold"
+            >
+              ›
+            </button>
           </div>
         </div>
       </div>
@@ -194,7 +238,7 @@ export default function Training() {
 
         {/* Muscle Heatmap */}
         <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-4">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">今日肌群熱力圖</h2>
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">{viewLabel(viewOffset)}肌群熱力圖</h2>
           <MuscleHeatmap muscleIntensities={muscleIntensities} />
         </div>
 
@@ -204,7 +248,7 @@ export default function Training() {
         {/* Today's Log */}
         <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">今日運動</h2>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">{viewLabel(viewOffset)}運動</h2>
             <button
               onClick={() => setShowAdd(v => !v)}
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-orange-500 text-white hover:bg-orange-600 transition-colors active:scale-95"
@@ -215,7 +259,7 @@ export default function Training() {
 
           {log.length === 0 && !showAdd && (
             <p className="text-xs text-gray-400 text-center py-4">
-              還沒有記錄，點「新增運動」開始
+              {isToday ? '還沒有記錄，點「新增運動」開始' : '這天沒有運動記錄'}
             </p>
           )}
 
