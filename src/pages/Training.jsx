@@ -56,9 +56,9 @@ export default function Training() {
     if (sharing || log.length === 0) return;
     setSharing(true);
     try {
-      const today = new Date();
       const days = ['日','一','二','三','四','五','六'];
-      const dateStr = `${today.getMonth()+1}月${today.getDate()}日（週${days[today.getDay()]}）`;
+      const viewDate = new Date(dateKey + 'T00:00:00');
+      const dateStr = `${viewDate.getMonth()+1}月${viewDate.getDate()}日（週${days[viewDate.getDay()]}）`;
 
       // grab the two .rbh SVGs (front = index 0, back = index 1)
       const rbhSvgs = document.querySelectorAll('.rbh');
