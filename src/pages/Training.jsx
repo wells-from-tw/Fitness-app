@@ -243,7 +243,15 @@ export default function Training() {
         </div>
 
         {/* Monthly Training Heatmap */}
-        <TrainingCalendarHeatmap />
+        <TrainingCalendarHeatmap onDayClick={key => {
+          const today = new Date();
+          today.setHours(0,0,0,0);
+          const clicked = new Date(key);
+          clicked.setHours(0,0,0,0);
+          const diff = Math.round((clicked - today) / 86400000);
+          setViewOffset(diff);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }} />
 
         {/* Today's Log */}
         <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-4">
@@ -870,7 +878,7 @@ function PasteSheet({ profile, onAdd, onClose }) {
 }
 
 /* ─── TrainingCalendarHeatmap ─── */
-function TrainingCalendarHeatmap() {
+function TrainingCalendarHeatmap({ onDayClick }) {
   const now        = new Date();
   const year       = now.getFullYear();
   const month      = now.getMonth();
@@ -932,7 +940,8 @@ function TrainingCalendarHeatmap() {
             <div
               key={cell.key}
               title={cell.count > 0 ? `${cell.count} 項運動・消耗 ${cell.totalBurned} kcal` : ''}
-              className={`aspect-square rounded-lg flex flex-col items-center justify-center transition-colors ${cellStyle(cell)} ${cell.isToday ? 'ring-2 ring-orange-400 ring-offset-1 dark:ring-offset-[#111]' : ''}`}
+              onClick={() => !cell.isFuture && onDayClick?.(cell.key)}
+              className={`aspect-square rounded-lg flex flex-col items-center justify-center transition-colors ${cellStyle(cell)} ${cell.isToday ? 'ring-2 ring-orange-400 ring-offset-1 dark:ring-offset-[#111]' : ''} ${!cell.isFuture ? 'cursor-pointer hover:opacity-75 active:scale-95' : ''}`}
             >
               <span className="text-xs font-semibold leading-none">{cell.d}</span>
               {cell.count > 0 && (
