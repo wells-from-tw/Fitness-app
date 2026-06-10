@@ -709,20 +709,20 @@ function ServingsRow({ servings, setServings }) {
 /* ── Open Food Facts lookup ── */
 // Returns { found, hasNutrition, name, calories, carbs, protein, fat }
 // Throws only on network error
-async function lookupBarcode(barcode) {
+const EMPTY_BARCODE_RESULT = { found: false, hasNutrition: false, name: '', calories: 0, carbs: 0, protein: 0, fat: 0 };
+
+async function fetchOffProduct(host, barcode) {
   const res = await fetch(
-    `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_zh,product_name_en,serving_size,nutriments`,
+    `https://${host}/api/v2/product/${barcode}?fields=product_name,product_name_zh,product_name_en,serving_size,nutriments`,
     { headers: { 'User-Agent': 'WiseFitness/1.0' } }
   );
   if (!res.ok) {
-    if (res.status === 404) return { found: false, hasNutrition: false, name: '', calories: 0, carbs: 0, protein: 0, fat: 0 };
+    if (res.status === 404) return EMPTY_BARCODE_RESULT;
     throw new Error('網路錯誤，請稍後再試');
   }
   const data = await res.json();
 
-  if (data.status !== 1) {
-    return { found: false, hasNutrition: false, name: '', calories: 0, carbs: 0, protein: 0, fat: 0 };
-  }
+  if (data.status !== 1) return EMPTY_BARCODE_RESULT;
 
   const p = data.product;
   const n = p.nutriments || {};
@@ -743,6 +743,18 @@ async function lookupBarcode(barcode) {
     name:     rawName + suffix || '未知商品',
     calories: kcal, carbs, protein: pro, fat,
   };
+}
+
+async function lookupBarcode(barcode) {
+  // 先查台灣站（在地商品收錄較完整、較準確），找不到或缺營養標示再退回世界站
+  const tw = await fetchOffProduct('tw.openfoodfacts.org', barcode);
+  if (tw.found && tw.hasNutrition) return tw;
+
+  const world = await fetchOffProduct('world.openfoodfacts.org', barcode);
+  if (world.found && world.hasNutrition) return world;
+
+  // 兩邊都沒有完整營養資訊時，回傳任一邊找到的商品名稱（讓使用者至少能確認品項）
+  return world.found ? world : tw;
 }
 
 /* ── BarcodeTab ── */

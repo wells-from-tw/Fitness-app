@@ -2,6 +2,7 @@ import { useState, useRef, useMemo } from 'react';
 import { loadGoals, saveGoals, loadProfile, saveProfile, loadAllDays, loadWeightLog, loadAllExercise, loadWeightGoal, saveWeightGoal, loadMealSplit, saveMealSplit, loadWaterGoal, saveWaterGoal, loadTrainingPrefs, saveTrainingPrefs } from '../utils/storage';
 import { calcBMR, calcTDEE, calcBMI, bmiLabel, ACTIVITY_LEVELS } from '../utils/tdee';
 import { loadApiKey, saveApiKey } from '../utils/ai';
+import { loadUsdaKey, saveUsdaKey } from '../utils/usda';
 
 const FIELDS = [
   { key: 'calories', label: '每日卡路里目標', unit: 'kcal', min: 500,  max: 5000, step: 50, color: 'blue'  },
@@ -361,6 +362,9 @@ export default function Settings() {
 
         {/* ── API Key ── */}
         <ApiKeySection />
+
+        {/* ── USDA API Key（選填）── */}
+        <UsdaKeySection />
 
         {/* ── 訓練偏好 ── */}
         <TrainingPrefsSection />
@@ -1063,6 +1067,76 @@ function ApiKeySection() {
           value={key}
           onChange={e => { setKey(e.target.value); setSaved(false); }}
           placeholder="sk-ant-api03-..."
+          className="flex-1 border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 font-mono"
+        />
+        <button
+          onClick={() => setShow(v => !v)}
+          className="px-3 py-2.5 bg-gray-100 dark:bg-[#1a1a1a] rounded-xl text-xs text-gray-500 dark:text-gray-300 hover:bg-gray-200 transition-colors"
+        >
+          {show ? '隱藏' : '顯示'}
+        </button>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={handleSave}
+          disabled={!key.trim()}
+          className={`flex-1 py-2.5 rounded-2xl text-sm font-semibold text-white transition-all active:scale-95 ${
+            saved ? 'bg-green-500' : 'bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400'
+          }`}
+        >
+          {saved ? '✓ 已儲存' : '儲存 Key'}
+        </button>
+        {key && (
+          <button
+            onClick={handleClear}
+            className="px-4 py-2.5 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-2xl text-sm font-semibold hover:bg-red-100 transition-colors"
+          >
+            清除
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* ── UsdaKeySection ── */
+function UsdaKeySection() {
+  const [key,   setKey]   = useState(() => loadUsdaKey());
+  const [show,  setShow]  = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  function handleSave() {
+    saveUsdaKey(key);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  function handleClear() {
+    saveUsdaKey('');
+    setKey('');
+  }
+
+  return (
+    <section className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-lg">🌎</span>
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">USDA FoodData Central API Key（選填）</h2>
+      </div>
+      <p className="text-xs text-gray-400 mb-4">
+        設定後，AI 估算西式／國際食品（漢堡、義大利麵、起司、穀片等）時會額外參考美國農業部資料庫，提高準確度。
+        Key 只存在你的裝置，不會上傳。可至{' '}
+        <a href="https://fdc.nal.usda.gov/api-key-signup.html" target="_blank" rel="noreferrer" className="text-blue-500 underline">
+          fdc.nal.usda.gov
+        </a>{' '}免費申請。
+      </p>
+
+      <div className="flex gap-2 mb-3">
+        <input
+          type={show ? 'text' : 'password'}
+          value={key}
+          onChange={e => { setKey(e.target.value); setSaved(false); }}
+          placeholder="DEMO_KEY 或你的 USDA API Key"
           className="flex-1 border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 font-mono"
         />
         <button

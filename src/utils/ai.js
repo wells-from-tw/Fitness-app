@@ -1,4 +1,5 @@
 import { searchFoodDb } from './foodDb';
+import { searchUsda } from './usda';
 
 const API_KEY_STORAGE = 'wisefitness_api_key';
 
@@ -40,6 +41,26 @@ async function buildDbCandidatesBlock(description) {
 - 若使用者描述的食物（或其組成部分，如白飯、肉燥、青菜）對應到上面清單中的某一項（含俗名/同義詞），請優先以該項目的「每100g數值」為基礎推算，不要憑空估算熱量
 - 推算時請依台灣常見的份量習慣，估計實際食用的可食重量（公克），再用「每100g數值 × 重量(g)/100」換算成 calories/carbs/protein/fat
 - 一份描述可能對應資料庫中多個品項的組合（例如「滷肉飯」＝白飯＋滷肉），可分別取用對應項目並加總，最後仍輸出為使用者描述的單一品項
+- 找不到合適項目時，才依你自己的知識估算`;
+}
+
+/**
+ * Build a "USDA FoodData Central候選項目" block for international/Western
+ * foods that the Taiwan official database doesn't cover well. Only runs if
+ * the user has configured a (free) USDA API key in Settings; otherwise
+ * returns '' immediately (searchUsda short-circuits).
+ */
+async function buildUsdaBlock(description) {
+  const candidates = await searchUsda(description, 5);
+  if (candidates.length === 0) return '';
+  const lines = candidates.map(c => {
+    const brandStr = c.brand ? `（${c.brand}）` : '';
+    return `- ${c.name}${brandStr} ${c.per}：熱量${c.calories}kcal、蛋白質${c.protein}g、脂肪${c.fat}g、碳水${c.carbs}g`;
+  }).join('\n');
+  return `\n\n【USDA FoodData Central 候選項目（國際/西式食品參考）】\n${lines}\n\n比對規則：
+- 若使用者描述的是西式/國際食品（如漢堡、義大利麵、起司、穀片、罐頭等），且上述清單有對應品項，請優先參考其數值估算
+- 標示「每100g」者，請依實際食用重量換算（數值 × 重量(g)/100）
+- 標示「每Xg/Xml」者，代表該包裝/份量的數值，請依使用者描述的數量做比例調整
 - 找不到合適項目時，才依你自己的知識估算`;
 }
 
@@ -94,10 +115,13 @@ async function callClaude(messages, maxTokens = 256, system = null) {
 
 /** Estimate nutrition from a text description. */
 export async function estimateNutrition(description, reference = []) {
-  const dbBlock = await buildDbCandidatesBlock(description);
+  const [dbBlock, usdaBlock] = await Promise.all([
+    buildDbCandidatesBlock(description),
+    buildUsdaBlock(description),
+  ]);
   const data = await callClaude([{
     role: 'user',
-    content: `${NUTRITION_PROMPT}${dbBlock}${buildReferenceBlock(reference)}\n\n食物描述：${description}`,
+    content: `${NUTRITION_PROMPT}${dbBlock}${usdaBlock}${buildReferenceBlock(reference)}\n\n食物描述：${description}`,
   }]);
   return parseNutrition(data.content?.[0]?.text || '', description);
 }
@@ -281,7 +305,10 @@ ${planText}`;
  * Returns an array of { name, calories, carbs, protein, fat }
  */
 export async function parseMultipleFoods(description, reference = []) {
-  const dbBlock = await buildDbCandidatesBlock(description);
+  const [dbBlock, usdaBlock] = await Promise.all([
+    buildDbCandidatesBlock(description),
+    buildUsdaBlock(description),
+  ]);
   const prompt = `你是一個專業的台灣營養師助理。使用者描述了他今天吃的東西，可能包含多個品項。
 請辨識每個食物並估算其營養成分，以 JSON 陣列回傳。只回傳 JSON 陣列，不要加任何說明文字或 markdown。
 
@@ -295,10 +322,10 @@ export async function parseMultipleFoods(description, reference = []) {
 }
 
 估算原則：
-- 台灣在地連鎖店請參考實際菜單熱量（八方雲集、Sukiya、麥當勞等）
+- 台灣在地連鎖店、超商鮮食請參考實際菜單／包裝營養標示熱量（如八方雲集、Sukiya、麥當勞、7-11、全家等）
 - 有指定數量請乘以對應份量
 - 套餐請拆成主餐+附餐（如有米飯請單獨列出）
-- 無法細分的套餐就列為一筆${dbBlock}${buildReferenceBlock(reference)}
+- 無法細分的套餐就列為一筆${dbBlock}${usdaBlock}${buildReferenceBlock(reference)}
 
 使用者描述：${description}`;
 
