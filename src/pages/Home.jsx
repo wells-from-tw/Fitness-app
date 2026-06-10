@@ -289,6 +289,7 @@ export default function Home() {
       {showChat && (
         <AiChatDrawer
           mode="nutrition"
+          context={{ goals, totals, meals: dayData.meals, burned }}
           onConfirmMeals={(meals, mealType) => {
             const type = mealType || 'snack';
             meals.forEach(food => addFood(type, food));

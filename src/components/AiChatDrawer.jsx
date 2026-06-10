@@ -60,7 +60,7 @@ export default function AiChatDrawer({ mode, context, onConfirmExercises, onConf
         setMessages(updated);
         saveHistory(mode, updated);
       } else {
-        reply = await chatNutrition(next);
+        reply = await chatNutrition(next, context);
         const assistantMsg = {
           role: 'assistant',
           content: reply.message,

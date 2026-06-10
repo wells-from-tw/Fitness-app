@@ -419,11 +419,49 @@ export async function chatTraining(messages, ctx = null) {
    AI Chat — Nutrition mode
    Returns: { message: string, mealType: string|null, meals: array|null }
 ───────────────────────────────────────────── */
-const NUTRITION_SYSTEM = `你是一位親切專業的台灣營養師助理。使用者會告訴你今天吃了什麼或想記錄什麼餐點，你要幫他辨識食物、估算營養並記錄。
+const MEAL_NAMES = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', snack: '點心' };
+
+function buildNutritionSystem(ctx) {
+  let contextBlock = '';
+
+  if (ctx) {
+    const { goals, totals, meals, burned } = ctx;
+
+    if (goals) {
+      contextBlock += `\n每日目標：${goals.calories} kcal（碳水 ${goals.carbs}g · 蛋白質 ${goals.protein}g · 脂肪 ${goals.fat}g）`;
+    }
+
+    if (totals) {
+      contextBlock += `\n今日已攝取：${totals.calories} kcal（碳水 ${totals.carbs}g · 蛋白質 ${totals.protein}g · 脂肪 ${totals.fat}g）`;
+      if (goals) {
+        const remaining = goals.calories - totals.calories + (burned || 0);
+        contextBlock += `\n今日剩餘額度：約 ${remaining} kcal（已含運動消耗 ${burned || 0} kcal）`;
+        const carbGap    = Math.max(0, goals.carbs    - totals.carbs);
+        const proteinGap = Math.max(0, goals.protein  - totals.protein);
+        const fatGap     = Math.max(0, goals.fat      - totals.fat);
+        contextBlock += `\n尚未達標的營養素缺口：碳水 ${carbGap}g · 蛋白質 ${proteinGap}g · 脂肪 ${fatGap}g`;
+      }
+    }
+
+    if (meals) {
+      const mealLines = Object.entries(meals)
+        .filter(([, foods]) => foods.length > 0)
+        .map(([type, foods]) => `${MEAL_NAMES[type] || type}：${foods.map(f => f.name).join('、')}`);
+      if (mealLines.length > 0) {
+        contextBlock += `\n\n今天已記錄的餐點：\n  ${mealLines.join('\n  ')}`;
+      } else {
+        contextBlock += `\n\n今天尚未記錄任何餐點`;
+      }
+    }
+  }
+
+  return `你是一位親切專業的台灣營養師助理。使用者會告訴你今天吃了什麼或想記錄什麼餐點，你要幫他辨識食物、估算營養並記錄。
+${contextBlock ? `\n【使用者今日狀況】${contextBlock}\n` : ''}
+根據以上資料，可以主動提醒使用者：今天熱量/營養素還有多少額度、目前飲食是否均衡、適合吃什麼來補足缺口。
 
 每次回覆都必須只輸出一個 JSON 物件，格式如下，不要加任何說明文字或 markdown：
 {
-  "message": "你的回覆（繁體中文，親切自然，2-4句）",
+  "message": "你的回覆（繁體中文，親切自然，2-4句，可引用使用者今日的剩餘額度或缺口給出具體建議）",
   "mealType": "breakfast"|"lunch"|"dinner"|"snack"|null,
   "meals": [
     {
@@ -441,10 +479,12 @@ const NUTRITION_SYSTEM = `你是一位親切專業的台灣營養師助理。使
 - mealType 根據上下文判斷（早餐/午餐/晚餐/點心），無法判斷時輸出 null
 - 台灣在地食物請參考在地熱量（如便利商店、夜市、早餐店等）
 - 語氣輕鬆，可加 emoji`;
+}
 
-export async function chatNutrition(messages) {
+export async function chatNutrition(messages, ctx = null) {
+  const system = buildNutritionSystem(ctx);
   const apiMsgs = messages.map(m => ({ role: m.role, content: m.content }));
-  const data = await callClaude(apiMsgs, 1024, NUTRITION_SYSTEM);
+  const data = await callClaude(apiMsgs, 1024, system);
   const text = data.content?.[0]?.text || '';
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) return { message: text, mealType: null, meals: null };
