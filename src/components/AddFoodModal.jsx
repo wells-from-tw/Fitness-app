@@ -49,6 +49,8 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
   const [aiState, setAiState]   = useState('idle');
   const [aiError, setAiError]   = useState('');
   const [multiResults, setMultiResults] = useState([]); // parsed multi-food results
+  const [isMulti, setIsMulti] = useState(false);        // whether AI returned multiple items (kept true even after removals)
+  const [editingIndex, setEditingIndex] = useState(null); // which multi-result row is being edited
   const [favs, setFavs]         = useState(() => loadFavorites());
   const [recentFoods]           = useState(() => getRecentFoods());
   const [servings, setServings] = useState(1);
@@ -65,6 +67,8 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
     setAiState('loading');
     setAiError('');
     setMultiResults([]);
+    setIsMulti(false);
+    setEditingIndex(null);
     try {
       const results = await parseMultipleFoods(aiInput.trim());
       if (results.length === 1) {
@@ -75,6 +79,7 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
       } else {
         // Multiple items → show multi-preview
         setMultiResults(results);
+        setIsMulti(true);
         setForm(EMPTY);
       }
       setAiState('done');
@@ -91,6 +96,19 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
       onAdd(mealType, { ...item, id: Date.now() + Math.random() });
     });
     onClose();
+  }
+
+  function updateMultiItem(i, field, value) {
+    setMultiResults(prev => prev.map((item, idx) => {
+      if (idx !== i) return item;
+      if (field === 'name') return { ...item, name: value };
+      const num = Number(value);
+      return { ...item, [field]: Number.isNaN(num) ? 0 : num };
+    }));
+  }
+
+  function removeMultiItem(i) {
+    setMultiResults(prev => prev.filter((_, idx) => idx !== i));
   }
 
   async function handlePhotoChange(e) {
@@ -343,22 +361,71 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
               )}
 
               {/* Multi-item result */}
-              {aiState === 'done' && multiResults.length > 0 && (
+              {aiState === 'done' && isMulti && (
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2 mb-1">
                     <span>✨</span>
                     <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">AI 解析結果（{multiResults.length} 項）</span>
+                    <span className="ml-auto text-xs text-gray-400">點擊可編輯</span>
                   </div>
                   {multiResults.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between bg-gray-50 dark:bg-[#1a1a1a] rounded-xl px-4 py-3">
-                      <div className="flex-1 min-w-0 mr-3">
-                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{item.name}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          碳 {item.carbs}g · 蛋 {item.protein}g · 脂 {item.fat}g
-                        </p>
+                    editingIndex === i ? (
+                      <div key={i} className="bg-gray-50 dark:bg-[#1a1a1a] rounded-xl px-4 py-3 flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            value={item.name}
+                            onChange={e => updateMultiItem(i, 'name', e.target.value)}
+                            className="flex-1 min-w-0 bg-white dark:bg-[#111] border border-gray-200 dark:border-[#2a2a2a] rounded-lg px-2 py-1 text-sm text-gray-800 dark:text-gray-100"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setEditingIndex(null)}
+                            className="text-xs font-semibold text-blue-500 shrink-0 px-2 py-1"
+                          >
+                            完成
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[
+                            { field: 'calories', label: '熱量' },
+                            { field: 'carbs',    label: '碳水' },
+                            { field: 'protein',  label: '蛋白質' },
+                            { field: 'fat',      label: '脂肪' },
+                          ].map(({ field, label }) => (
+                            <div key={field}>
+                              <label className="text-[10px] text-gray-400 block mb-0.5">{label}</label>
+                              <input
+                                type="number"
+                                value={item[field]}
+                                onChange={e => updateMultiItem(i, field, e.target.value)}
+                                className="w-full bg-white dark:bg-[#111] border border-gray-200 dark:border-[#2a2a2a] rounded-lg px-2 py-1 text-sm text-gray-800 dark:text-gray-100"
+                              />
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <span className="text-sm font-bold text-blue-500 shrink-0">{item.calories} kcal</span>
-                    </div>
+                    ) : (
+                      <div key={i} className="flex items-center justify-between bg-gray-50 dark:bg-[#1a1a1a] rounded-xl px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => setEditingIndex(i)}
+                          className="flex-1 min-w-0 mr-3 text-left"
+                        >
+                          <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{item.name} <span className="text-gray-300">✏️</span></p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            碳 {item.carbs}g · 蛋 {item.protein}g · 脂 {item.fat}g
+                          </p>
+                        </button>
+                        <span className="text-sm font-bold text-blue-500 shrink-0 mr-2">{item.calories} kcal</span>
+                        <button
+                          type="button"
+                          onClick={() => removeMultiItem(i)}
+                          className="text-gray-300 hover:text-red-400 text-lg leading-none shrink-0"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )
                   ))}
                   <div className="flex items-center justify-between text-sm px-1 pt-1">
                     <span className="text-gray-400">合計</span>
@@ -369,15 +436,16 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
                   <button
                     type="button"
                     onClick={handleAddAll}
-                    className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-2xl text-sm transition-all active:scale-95"
+                    disabled={multiResults.length === 0}
+                    className="w-full py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-2xl text-sm transition-all active:scale-95"
                   >
-                    全部加入{MEAL_LABELS[mealType]}
+                    {multiResults.length === 0 ? '已移除所有項目' : `全部加入${MEAL_LABELS[mealType]}`}
                   </button>
                 </div>
               )}
 
               {/* Single-item result */}
-              {aiState === 'done' && multiResults.length === 0 && (
+              {aiState === 'done' && !isMulti && (
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4 border border-blue-100 dark:border-blue-800">
                   <div className="flex items-center gap-2 mb-3">
                     <span>✨</span>
@@ -408,10 +476,10 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
                 </div>
               )}
 
-              {aiState === 'done' && multiResults.length === 0 && <FormFields form={form} set={set} />}
-              {aiState === 'done' && multiResults.length === 0 && <ServingsRow servings={servings} setServings={setServings} />}
+              {aiState === 'done' && !isMulti && <FormFields form={form} set={set} />}
+              {aiState === 'done' && !isMulti && <ServingsRow servings={servings} setServings={setServings} />}
 
-              {multiResults.length === 0 && (
+              {!isMulti && (
                 <button
                   type="button"
                   onClick={handleSubmit}
