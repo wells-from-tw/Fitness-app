@@ -135,6 +135,14 @@ export const EXERCISES = [
     id: 'cable_crossover', name: '繩索夾胸', category: 'chest', type: 'strength', met: 4.0,
     muscles: { primary: ['chest'], secondary: ['shoulders'] },
   },
+  {
+    id: 'db_bench_press', name: '啞鈴臥推', category: 'chest', type: 'strength', met: 5.0,
+    muscles: { primary: ['chest'], secondary: ['shoulders', 'triceps'] },
+  },
+  {
+    id: 'pec_deck', name: '蝴蝶機夾胸', category: 'chest', type: 'strength', met: 4.0,
+    muscles: { primary: ['chest'], secondary: ['shoulders'] },
+  },
 
   // ── 背 ───────────────────────────────────────────────────
   {
@@ -169,6 +177,14 @@ export const EXERCISES = [
     id: 'cable_row', name: '坐姿划船', category: 'back', type: 'strength', met: 4.5,
     muscles: { primary: ['upper_back', 'lats'], secondary: ['biceps', 'lower_back'] },
   },
+  {
+    id: 'tbar_row', name: 'T槓划船', category: 'back', type: 'strength', met: 5.0,
+    muscles: { primary: ['upper_back', 'lats'], secondary: ['biceps', 'lower_back'] },
+  },
+  {
+    id: 'face_pull', name: '臉拉', category: 'back', type: 'strength', met: 3.5,
+    muscles: { primary: ['upper_back', 'shoulders'], secondary: [] },
+  },
 
   // ── 肩 ───────────────────────────────────────────────────
   {
@@ -194,6 +210,10 @@ export const EXERCISES = [
   {
     id: 'shrugs', name: '聳肩', category: 'shoulders', type: 'strength', met: 3.5,
     muscles: { primary: ['upper_back'], secondary: ['shoulders', 'forearms'] },
+  },
+  {
+    id: 'upright_row', name: '直立划船', category: 'shoulders', type: 'strength', met: 4.0,
+    muscles: { primary: ['shoulders'], secondary: ['upper_back', 'biceps'] },
   },
 
   // ── 手臂 ─────────────────────────────────────────────────
@@ -224,6 +244,18 @@ export const EXERCISES = [
   {
     id: 'preacher_curl', name: '牧師椅彎舉', category: 'arms', type: 'strength', met: 4.0,
     muscles: { primary: ['biceps'], secondary: ['forearms'] },
+  },
+  {
+    id: 'barbell_curl', name: '槓鈴彎舉', category: 'arms', type: 'strength', met: 4.0,
+    muscles: { primary: ['biceps'], secondary: ['forearms'] },
+  },
+  {
+    id: 'concentration_curl', name: '集中彎舉', category: 'arms', type: 'strength', met: 3.5,
+    muscles: { primary: ['biceps'], secondary: ['forearms'] },
+  },
+  {
+    id: 'skull_crusher', name: '法式彎舉', category: 'arms', type: 'strength', met: 4.0,
+    muscles: { primary: ['triceps'], secondary: [] },
   },
 
   // ── 腿 ───────────────────────────────────────────────────
@@ -271,6 +303,18 @@ export const EXERCISES = [
     id: 'step_up', name: '登台', category: 'legs', type: 'strength', met: 5.0,
     muscles: { primary: ['quads', 'glutes'], secondary: ['hamstrings', 'calves'] },
   },
+  {
+    id: 'hip_thrust', name: '臀推', category: 'legs', type: 'strength', met: 5.5,
+    muscles: { primary: ['glutes'], secondary: ['hamstrings', 'lower_back'] },
+  },
+  {
+    id: 'goblet_squat', name: '高腳杯深蹲', category: 'legs', type: 'strength', met: 5.5,
+    muscles: { primary: ['quads', 'glutes'], secondary: ['core', 'hamstrings'] },
+  },
+  {
+    id: 'hack_squat', name: '哈克深蹲', category: 'legs', type: 'strength', met: 6.0,
+    muscles: { primary: ['quads', 'glutes'], secondary: ['hamstrings'] },
+  },
 
   // ── 核心 ─────────────────────────────────────────────────
   {
@@ -300,6 +344,10 @@ export const EXERCISES = [
   {
     id: 'back_extension', name: '背伸展', category: 'core', type: 'strength', met: 4.0,
     muscles: { primary: ['lower_back', 'glutes'], secondary: ['hamstrings'] },
+  },
+  {
+    id: 'farmers_walk', name: '農夫走路', category: 'core', type: 'strength', met: 5.5,
+    muscles: { primary: ['forearms', 'core'], secondary: ['lower_back', 'quads'] },
   },
 
   // ── Hammer Strength 機械 ─────────────────────────────────
