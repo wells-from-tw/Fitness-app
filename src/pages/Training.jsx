@@ -7,6 +7,17 @@ import MuscleHeatmap from '../components/MuscleHeatmap';
 import SharePreviewModal from '../components/SharePreviewModal';
 import AiChatDrawer from '../components/AiChatDrawer';
 
+// 嘗試將使用者輸入的動作名稱對應回資料庫，帶出肌群資訊（讓人體熱力圖能正確顯示）
+function matchExerciseInDb(name) {
+  const n = name.trim().toLowerCase();
+  if (!n) return null;
+  return (
+    EXERCISES.find(e => e.name.toLowerCase() === n) ||
+    EXERCISES.find(e => n.includes(e.name.toLowerCase()) || e.name.toLowerCase().includes(n)) ||
+    null
+  );
+}
+
 function offsetToKey(offset) {
   const d = new Date();
   d.setDate(d.getDate() + offset);
@@ -498,8 +509,7 @@ export default function Training() {
           mode="training"
           context={{ prefs, recentLogs }}
           onConfirmExercises={entries => handleAddMany(entries.map(e => {
-            const matched = EXERCISES.find(ex => ex.name.toLowerCase() === e.name.toLowerCase())
-              || EXERCISES.find(ex => e.name.toLowerCase().includes(ex.name.toLowerCase()) || ex.name.toLowerCase().includes(e.name.toLowerCase()));
+            const matched = matchExerciseInDb(e.name);
             const weightKg = profile.weight || 65;
             const MET = matched?.met ?? 5;
             const dur = e.duration || Math.ceil((e.sets?.length || 1) * 3) || 5;
@@ -600,8 +610,9 @@ function ManualForm({ profile, onAdd }) {
 
   const weightKg = profile?.weight ?? 70;
 
-  // Estimate calories: MET 5.0 for general strength training
-  const MET = 5.0;
+  // Try to match against the exercise database (by name) to fill in muscle groups
+  const matched = matchExerciseInDb(name);
+  const MET = matched?.met ?? 5.0;
   const estimated = duration
     ? Math.round(MET * weightKg * (Number(duration) || 0) / 60)
     : null;
@@ -614,13 +625,14 @@ function ManualForm({ profile, onAdd }) {
 
   function handle() {
     if (!name) return;
+    const m = matchExerciseInDb(name);
     onAdd({
       id:       Date.now(),
       name,
-      type:     'strength',
+      type:     m?.type ?? 'strength',
       duration: Number(duration) || 0,
       calories: estimated ?? 0,
-      muscles:  { primary: [], secondary: [] },
+      muscles:  m?.muscles ?? { primary: [], secondary: [] },
       sets:     sets.map(s => ({ reps: Number(s.reps) || 0, weight: Number(s.weight) || 0 })),
     });
   }
@@ -636,6 +648,11 @@ function ManualForm({ profile, onAdd }) {
         placeholder="運動名稱（例：HS 胸推）"
         className="w-full border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
       />
+      {name && (
+        matched
+          ? <p className="text-xs text-green-500">✓ 已對應到「{matched.name}」，將顯示在熱力圖中</p>
+          : <p className="text-xs text-gray-400">⚠️ 找不到對應的肌群資料，此動作不會顯示在熱力圖中</p>
+      )}
 
       {/* Duration */}
       <div>
@@ -767,21 +784,10 @@ function PasteSheet({ profile, onAdd, onClose }) {
   const weightKg = profile?.weight ?? 70;
   const MET = 5.0;
 
-  // 嘗試將解析出的動作名稱對應回資料庫，帶出肌群資訊（讓人體熱力圖能正確顯示）
-  function matchExercise(name) {
-    const n = name.trim().toLowerCase();
-    if (!n) return null;
-    return (
-      EXERCISES.find(e => e.name.toLowerCase() === n) ||
-      EXERCISES.find(e => n.includes(e.name.toLowerCase()) || e.name.toLowerCase().includes(n)) ||
-      null
-    );
-  }
-
   function buildEntries(result) {
     return result.map(item => {
       const dur = item.duration || Math.ceil((item.sets?.length || 1) * 3) || 5;
-      const matched = matchExercise(item.name);
+      const matched = matchExerciseInDb(item.name);
       return {
         id:       Date.now() + Math.random(),
         name:     item.name,
