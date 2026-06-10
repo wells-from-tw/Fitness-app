@@ -88,7 +88,7 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
 
   function handleAddAll() {
     multiResults.forEach(item => {
-      onAdd({ ...item, id: Date.now() + Math.random() });
+      onAdd(mealType, { ...item, id: Date.now() + Math.random() });
     });
     onClose();
   }
