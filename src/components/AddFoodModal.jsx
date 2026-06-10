@@ -62,6 +62,18 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
+  // 收藏 + 最近吃過的食物，作為 AI 估算的「已知數值」參考，優先採用使用者校正過的數字
+  function buildFoodReference() {
+    const seen = new Set();
+    const ref = [];
+    for (const f of [...favs, ...recentFoods]) {
+      if (seen.has(f.name)) continue;
+      seen.add(f.name);
+      ref.push({ name: f.name, calories: f.calories, carbs: f.carbs, protein: f.protein, fat: f.fat });
+    }
+    return ref.slice(0, 30);
+  }
+
   async function handleAiEstimate() {
     if (!aiInput.trim()) return;
     setAiState('loading');
@@ -70,7 +82,7 @@ export default function AddFoodModal({ mealType, onAdd, onClose }) {
     setIsMulti(false);
     setEditingIndex(null);
     try {
-      const results = await parseMultipleFoods(aiInput.trim());
+      const results = await parseMultipleFoods(aiInput.trim(), buildFoodReference());
       if (results.length === 1) {
         // Single item → fill form as before
         const r = results[0];

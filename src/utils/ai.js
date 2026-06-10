@@ -19,6 +19,19 @@ const NUTRITION_PROMPT = `你是一個專業的台灣營養師助理。請辨識
 }
 估算原則：以常見的一份量為基準，台灣在地料理請參考本地食材與烹調方式，無法識別也請盡量估算。`;
 
+/**
+ * Build a "已知食物參考表" block from the user's saved foods (favorites / past entries),
+ * so the AI prefers these calibrated values over a fresh guess when the name matches.
+ */
+function buildReferenceBlock(reference) {
+  if (!reference || reference.length === 0) return '';
+  const lines = reference
+    .slice(0, 30)
+    .map(f => `- ${f.name}：${f.calories} kcal（碳水 ${f.carbs}g · 蛋白質 ${f.protein}g · 脂肪 ${f.fat}g）`)
+    .join('\n');
+  return `\n\n使用者過去記錄／收藏過的食物（若名稱相同或非常相似，請優先採用以下數值，不要重新估算）：\n${lines}`;
+}
+
 function parseNutrition(text, fallbackName) {
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('PARSE_ERROR');
@@ -56,10 +69,10 @@ async function callClaude(messages, maxTokens = 256, system = null) {
 }
 
 /** Estimate nutrition from a text description. */
-export async function estimateNutrition(description) {
+export async function estimateNutrition(description, reference = []) {
   const data = await callClaude([{
     role: 'user',
-    content: `${NUTRITION_PROMPT}\n\n食物描述：${description}`,
+    content: `${NUTRITION_PROMPT}${buildReferenceBlock(reference)}\n\n食物描述：${description}`,
   }]);
   return parseNutrition(data.content?.[0]?.text || '', description);
 }
@@ -242,7 +255,7 @@ ${planText}`;
  * Parse a freeform meal description into multiple food items.
  * Returns an array of { name, calories, carbs, protein, fat }
  */
-export async function parseMultipleFoods(description) {
+export async function parseMultipleFoods(description, reference = []) {
   const prompt = `你是一個專業的台灣營養師助理。使用者描述了他今天吃的東西，可能包含多個品項。
 請辨識每個食物並估算其營養成分，以 JSON 陣列回傳。只回傳 JSON 陣列，不要加任何說明文字或 markdown。
 
@@ -259,7 +272,7 @@ export async function parseMultipleFoods(description) {
 - 台灣在地連鎖店請參考實際菜單熱量（八方雲集、Sukiya、麥當勞等）
 - 有指定數量請乘以對應份量
 - 套餐請拆成主餐+附餐（如有米飯請單獨列出）
-- 無法細分的套餐就列為一筆
+- 無法細分的套餐就列為一筆${buildReferenceBlock(reference)}
 
 使用者描述：${description}`;
 
