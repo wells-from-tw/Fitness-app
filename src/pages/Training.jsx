@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { loadExerciseLog, saveExerciseLog, loadAllExercise, loadProfile, getTodayKey, loadTrainingPrefs } from '../utils/storage';
-import { EXERCISES, CATEGORIES, MUSCLE_LABELS, calcMuscleIntensities, intensityColor } from '../data/exercises';
+import { EXERCISES, CATEGORIES, MUSCLE_LABELS, calcMuscleIntensities, intensityColor, estimateCalories } from '../data/exercises';
 import { generateTrainingCard } from '../utils/shareCard';
 import { parseWorkoutPlan } from '../utils/ai';
 import MuscleHeatmap from '../components/MuscleHeatmap';
@@ -112,8 +112,11 @@ export default function Training() {
 
   function calcCalories(ex, dur, setList) {
     const weightKg = profile.weight || 65;
-    const hours    = (Number(dur) || 0) / 60;
-    return Math.round((ex.met || 5) * weightKg * hours);
+    return estimateCalories({
+      met: ex.met, weightKg, durationMin: dur,
+      sets: ex.type === 'strength' ? setList : [],
+      type: ex.type,
+    });
   }
 
   // Auto-suggest duration from set count (≈3 min/set incl. rest), unless user manually edited it
@@ -512,16 +515,18 @@ export default function Training() {
             const matched = matchExerciseInDb(e.name);
             const weightKg = profile.weight || 65;
             const MET = matched?.met ?? 5;
+            const type = matched?.type ?? 'strength';
             const dur = e.duration || Math.ceil((e.sets?.length || 1) * 3) || 5;
+            const sets = e.sets || [];
             return {
               id:       Date.now() + Math.random(),
               name:     e.name,
-              type:     matched?.type ?? 'strength',
+              type,
               met:      MET,
               duration: dur,
-              calories: Math.round(MET * weightKg * dur / 60),
+              calories: estimateCalories({ met: MET, weightKg, durationMin: dur, sets, type }),
               muscles:  matched?.muscles ?? { primary: [], secondary: [] },
-              sets:     (e.sets || []),
+              sets,
             };
           }))}
           onClose={() => setShowChat(false)}
@@ -613,8 +618,9 @@ function ManualForm({ profile, onAdd }) {
   // Try to match against the exercise database (by name) to fill in muscle groups
   const matched = matchExerciseInDb(name);
   const MET = matched?.met ?? 5.0;
+  const type = matched?.type ?? 'strength';
   const estimated = duration
-    ? Math.round(MET * weightKg * (Number(duration) || 0) / 60)
+    ? estimateCalories({ met: MET, weightKg, durationMin: Number(duration) || 0, sets, type })
     : null;
 
   function updateSet(i, field, val) {
@@ -788,15 +794,17 @@ function PasteSheet({ profile, onAdd, onClose }) {
     return result.map(item => {
       const dur = item.duration || Math.ceil((item.sets?.length || 1) * 3) || 5;
       const matched = matchExerciseInDb(item.name);
+      const met = matched?.met ?? MET;
+      const sets = (item.sets || []).map(s => ({ reps: s.reps || 0, weight: s.weight || 0 }));
       return {
         id:       Date.now() + Math.random(),
         name:     item.name,
         type:     'strength',
-        met:      matched?.met ?? MET,
+        met,
         duration: dur,
-        calories: Math.round((matched?.met ?? MET) * weightKg * dur / 60),
+        calories: estimateCalories({ met, weightKg, durationMin: dur, sets, type: 'strength' }),
         muscles:  matched?.muscles ?? { primary: [], secondary: [] },
-        sets:     (item.sets || []).map(s => ({ reps: s.reps || 0, weight: s.weight || 0 })),
+        sets,
       };
     });
   }
@@ -1042,7 +1050,11 @@ function EditEntrySheet({ entry, profile, onSave, onClose }) {
   }
 
   const dur = Number(duration) || 0;
-  const estimated = Math.round(MET * weightKg * dur / 60);
+  const estimated = estimateCalories({
+    met: MET, weightKg, durationMin: dur,
+    sets: isStrength ? sets : [],
+    type: entry.type,
+  });
 
   function handleSave() {
     const updates = {

@@ -391,6 +391,32 @@ export const EXERCISES = [
 ];
 
 /**
+ * Estimate calories burned for an exercise.
+ *
+ * - Cardio (or strength with no sets): plain time-based formula
+ *     calories = MET × bodyweight(kg) × hours
+ * - Strength with sets: the time-based baseline is scaled by an
+ *   intensity multiplier derived from total tonnage (Σ reps×weight)
+ *   relative to bodyweight, so changing reps, sets, or weight all
+ *   move the result — not just duration.
+ *     intensity = clamp(0.6 .. 2.0, 0.8 + totalVolume / (bodyweight × 50))
+ *     calories  = base × intensity
+ */
+export function estimateCalories({ met = 5, weightKg = 65, durationMin = 0, sets = [], type = 'strength' }) {
+  const hours = (Number(durationMin) || 0) / 60;
+  const base  = (met || 5) * weightKg * hours;
+
+  if (type === 'cardio' || !sets || sets.length === 0) {
+    return Math.round(base);
+  }
+
+  const totalVolume = sets.reduce((s, set) => s + (Number(set.reps) || 0) * (Number(set.weight) || 0), 0);
+  const volumeFactor = totalVolume / (weightKg * 50);
+  const intensity = Math.min(2, Math.max(0.6, 0.8 + volumeFactor));
+  return Math.round(base * intensity);
+}
+
+/**
  * Calculate muscle intensities from a list of exercise log entries.
  * Returns { [muscleId]: number } where number is cumulative intensity.
  */
