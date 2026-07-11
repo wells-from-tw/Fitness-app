@@ -144,6 +144,31 @@ export const EXERCISES = [
     id: 'pec_deck', name: '蝴蝶機夾胸', category: 'chest', type: 'strength', met: 4.0,
     muscles: { primary: ['chest'], secondary: ['shoulders'] },
   },
+  // 滑輪機（Cable）胸部動作
+  {
+    id: 'cable_chest_press', name: '滑輪胸推', category: 'chest', type: 'strength', met: 4.5,
+    muscles: { primary: ['chest'], secondary: ['shoulders', 'triceps'] },
+  },
+  {
+    id: 'high_cable_fly', name: '高位滑輪夾胸', category: 'chest', type: 'strength', met: 4.0,
+    muscles: { primary: ['chest'], secondary: ['shoulders'] },
+  },
+  {
+    id: 'mid_cable_fly', name: '中位滑輪夾胸', category: 'chest', type: 'strength', met: 4.0,
+    muscles: { primary: ['chest'], secondary: ['shoulders'] },
+  },
+  {
+    id: 'low_cable_fly', name: '低位滑輪夾胸', category: 'chest', type: 'strength', met: 4.0,
+    muscles: { primary: ['chest', 'shoulders'], secondary: [] },
+  },
+  {
+    id: 'single_arm_cable_fly', name: '單臂滑輪夾胸', category: 'chest', type: 'strength', met: 4.0,
+    muscles: { primary: ['chest'], secondary: ['core', 'shoulders'] },
+  },
+  {
+    id: 'cable_pullover', name: '滑輪仰臥拉舉', category: 'chest', type: 'strength', met: 4.0,
+    muscles: { primary: ['chest', 'lats'], secondary: ['triceps'] },
+  },
 
   // ── 背 ───────────────────────────────────────────────────
   {
@@ -453,9 +478,15 @@ const EXERCISE_ALIASES = {
   dumbbell_fly:     '飛鳥,平板飛鳥,dumbbell fly,fly',
   pushup:           '俯臥撑,伏立挺身,push up,pushup',
   dips:             '雙槓,撐體,臂屈伸,dips,dip',
-  cable_crossover:  '滑輪夾胸,繩索交叉,夾胸,cable crossover,cable fly',
+  cable_crossover:  '繩索交叉,夾胸,cable crossover',
   db_bench_press:   '啞鈴平板臥推,dumbbell bench press,dumbbell press',
   pec_deck:         '蝴蝶機,夾胸機,pec deck',
+  cable_chest_press:'繩索胸推,立姿胸推,站姿滑輪胸推,cable press,cable chest press',
+  high_cable_fly:   '高位夾胸,高滑輪飛鳥,下斜夾胸,高位繩索夾胸,high to low fly,high cable fly',
+  mid_cable_fly:    '中位夾胸,平行夾胸,滑輪夾胸,滑輪飛鳥,繩索飛鳥,cable fly,mid cable fly',
+  low_cable_fly:    '低位夾胸,低滑輪飛鳥,上斜夾胸,低位繩索夾胸,low to high fly,low cable fly',
+  single_arm_cable_fly: '單手夾胸,單手滑輪夾胸,單邊夾胸,single arm cable fly',
+  cable_pullover:   '滑輪拉舉,繩索仰臥拉舉,cable pullover',
   // 背
   pullup:           '引體,拉單槓,單槓,pull up,pullup,chin up',
   lat_pulldown:     '滑輪下拉,高位下拉,坐姿下拉,背闊下拉,lat pulldown,pulldown',
