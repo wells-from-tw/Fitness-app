@@ -64,6 +64,34 @@ export default function Home() {
   const [sharing,         setSharing]         = useState(false);
   const [previewUrl,      setPreviewUrl]      = useState(null);
   const [showChat,        setShowChat]        = useState(false);
+  const [fabOpen,         setFabOpen]         = useState(false);
+
+  async function handleSummary() {
+    if (summaryModal === 'loading') return;
+    setSummaryModal('loading');
+    try {
+      const text = await getDailySummary(dayData.meals, totals, goals);
+      setSummaryModal(text);
+    } catch (err) {
+      setSummaryModal(
+        err.message === 'NO_KEY'      ? '請先在設定頁輸入 Anthropic API Key' :
+        err.message === 'INVALID_KEY' ? 'API Key 無效，請重新設定' :
+        `分析失敗：${err.message}`
+      );
+    }
+  }
+
+  async function handleSuggestion() {
+    if (suggestionModal === 'loading') return;
+    setSuggestionModal('loading');
+    const remaining = goals.calories - totals.calories;
+    try {
+      const text = await getMealSuggestion(remaining, totals, goals);
+      setSuggestionModal(text);
+    } catch (err) {
+      setSuggestionModal(`建議失敗：${err.message}`);
+    }
+  }
 
   async function handleShare() {
     if (sharing) return;
@@ -135,7 +163,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 pb-28 pt-6 flex flex-col gap-3">
+      <main className="max-w-lg mx-auto px-4 pb-44 pt-6 flex flex-col gap-3">
         {/* Calorie Ring */}
         <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5 flex flex-col items-center">
           <CalorieRing consumed={totals.calories} burned={burned} goal={goals.calories} />
@@ -173,88 +201,67 @@ export default function Home() {
           />
         </div>
 
-        {totals.calories > 0 && (
-          <div className="flex gap-2">
-            <button
-              onClick={async () => {
-                if (summaryModal === 'loading') return;
-                setSummaryModal('loading');
-                try {
-                  const text = await getDailySummary(dayData.meals, totals, goals);
-                  setSummaryModal(text);
-                } catch (err) {
-                  setSummaryModal(
-                    err.message === 'NO_KEY'      ? '請先在設定頁輸入 Anthropic API Key' :
-                    err.message === 'INVALID_KEY' ? 'API Key 無效，請重新設定' :
-                    `分析失敗：${err.message}`
-                  );
-                }
-              }}
-              className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-md hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-1.5"
-            >
-              {summaryModal === 'loading'
-                ? <><span className="inline-block animate-spin text-base">◌</span>&nbsp;分析中…</>
-                : <>✨ 今日小結</>}
-            </button>
-            {goals.calories - totals.calories > 100 && (
-              <button
-                onClick={async () => {
-                  if (suggestionModal === 'loading') return;
-                  setSuggestionModal('loading');
-                  const remaining = goals.calories - totals.calories;
-                  try {
-                    const text = await getMealSuggestion(remaining, totals, goals);
-                    setSuggestionModal(text);
-                  } catch (err) {
-                    setSuggestionModal(`建議失敗：${err.message}`);
-                  }
-                }}
-                className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-500 text-white text-sm font-semibold shadow-md hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-1.5"
-              >
-                {suggestionModal === 'loading'
-                  ? <><span className="inline-block animate-spin text-base">◌</span>&nbsp;思考中…</>
-                  : <>🍽️ 推薦下一餐</>}
-              </button>
-            )}
+        {/* Quick actions */}
+        <div>
+          <h2 className="text-[11px] text-gray-400 uppercase tracking-widest mb-3 px-1">快速功能</h2>
+          <div className="grid grid-cols-4 gap-2">
+            <QuickAction
+              emoji="✨" label="今日小結"
+              loading={summaryModal === 'loading'}
+              disabled={totals.calories === 0}
+              onClick={handleSummary}
+            />
+            <QuickAction
+              emoji="🍽️" label="推薦下餐"
+              loading={suggestionModal === 'loading'}
+              disabled={totals.calories === 0 || goals.calories - totals.calories <= 100}
+              onClick={handleSuggestion}
+            />
+            <QuickAction
+              emoji="💬" label="AI 諮詢"
+              onClick={() => setConsultOpen(true)}
+            />
+            <QuickAction
+              emoji="📤" label="分享"
+              loading={sharing}
+              onClick={handleShare}
+            />
           </div>
-        )}
-        {/* AI 諮詢 */}
-        <button
-          onClick={() => setConsultOpen(true)}
-          className="w-full py-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-600 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all active:scale-95 flex items-center justify-center gap-2"
-        >
-          💬 AI 飲食諮詢
-        </button>
-
-        {/* Share card */}
-        <button
-          onClick={handleShare}
-          disabled={sharing}
-          className="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-sm font-semibold shadow-md hover:opacity-90 disabled:opacity-60 transition-all active:scale-95 flex items-center justify-center gap-2"
-        >
-          {sharing
-            ? <><span className="inline-block animate-spin text-base">◌</span>&nbsp;生成中…</>
-            : <>📤 分享今日進度</>}
-        </button>
+        </div>
       </main>
 
-      {/* FAB — add food */}
-      <button
-        onClick={() => setModal('breakfast')}
-        className="fixed bottom-20 right-5 z-40 w-14 h-14 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center text-3xl leading-none"
-        aria-label="新增食物"
-      >
-        +
-      </button>
-
-      {/* FAB — AI chat */}
-      <button
-        onClick={() => setShowChat(true)}
-        className="fixed bottom-36 right-5 z-40 w-12 h-12 rounded-full bg-violet-500 hover:bg-violet-600 text-white shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center text-xl"
-        aria-label="AI 飲食助手"
-      >
-        🤖
-      </button>
+      {/* FAB — expands to 記錄食物 / AI 助手 */}
+      {fabOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+          onClick={() => setFabOpen(false)}
+        />
+      )}
+      <div className="fixed bottom-20 right-5 z-40 flex flex-col items-end gap-3">
+        {fabOpen && (
+          <>
+            <button
+              onClick={() => { setShowChat(true); setFabOpen(false); }}
+              className="flex items-center gap-2 pl-4 pr-5 py-3 rounded-full bg-white dark:bg-[#1a1a1a] text-gray-700 dark:text-gray-200 text-sm font-semibold shadow-lg active:scale-95 transition-all"
+            >
+              🤖 AI 飲食助手
+            </button>
+            <button
+              onClick={() => { setModal('breakfast'); setFabOpen(false); }}
+              className="flex items-center gap-2 pl-4 pr-5 py-3 rounded-full bg-white dark:bg-[#1a1a1a] text-gray-700 dark:text-gray-200 text-sm font-semibold shadow-lg active:scale-95 transition-all"
+            >
+              🍽️ 記錄食物
+            </button>
+          </>
+        )}
+        <button
+          onClick={() => setFabOpen(v => !v)}
+          className={`w-14 h-14 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center text-3xl leading-none ${fabOpen ? 'rotate-45' : ''}`}
+          aria-label={fabOpen ? '關閉選單' : '開啟選單'}
+        >
+          +
+        </button>
+      </div>
 
       {previewUrl && (
         <SharePreviewModal
@@ -336,6 +343,22 @@ export default function Home() {
         />
       )}
     </div>
+  );
+}
+
+/* ── QuickAction ── */
+function QuickAction({ emoji, label, onClick, loading = false, disabled = false }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled || loading}
+      className="flex flex-col items-center gap-1.5 py-3.5 rounded-2xl bg-white dark:bg-[#111] border border-gray-100 dark:border-[#1e1e1e] active:scale-95 transition-all disabled:opacity-35 hover:bg-gray-50 dark:hover:bg-[#161616]"
+    >
+      <span className="text-xl leading-none">
+        {loading ? <span className="inline-block animate-spin text-gray-400">◌</span> : emoji}
+      </span>
+      <span className="text-[11px] font-medium text-gray-600 dark:text-gray-300">{label}</span>
+    </button>
   );
 }
 

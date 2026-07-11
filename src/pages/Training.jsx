@@ -207,27 +207,27 @@ export default function Training() {
         <div className="max-w-lg mx-auto flex flex-col gap-2">
           {/* Row 1: title + actions */}
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">🏋️ 訓練</h1>
+            <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100 whitespace-nowrap">🏋️ 訓練</h1>
             <div className="flex items-center gap-2">
               {totalBurned > 0 && (
-                <div className="bg-orange-50 dark:bg-orange-900/20 rounded-2xl px-3 py-1.5 text-center">
+                <div className="bg-orange-50 dark:bg-orange-900/20 rounded-2xl px-3 py-1.5 text-center whitespace-nowrap">
                   <p className="text-sm font-bold text-orange-500">-{totalBurned} kcal</p>
                 </div>
               )}
               <button
                 onClick={() => setShowPaste(true)}
-                className="flex items-center gap-1 px-3 py-2 rounded-2xl bg-violet-500 hover:bg-violet-600 text-white text-xs font-semibold transition-all active:scale-95"
+                className="flex items-center gap-1 px-3 py-2 rounded-2xl bg-violet-500 hover:bg-violet-600 text-white text-xs font-semibold transition-all active:scale-95 whitespace-nowrap"
               >
-                📋 貼上計劃
+                📋<span className="hidden min-[400px]:inline"> 貼上計劃</span>
               </button>
               {log.length > 0 && (
                 <button
                   onClick={handleShare}
                   disabled={sharing}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-semibold shadow hover:opacity-90 disabled:opacity-60 transition-all active:scale-95"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-semibold shadow hover:opacity-90 disabled:opacity-60 transition-all active:scale-95 whitespace-nowrap"
                 >
                   {sharing ? <span className="inline-block animate-spin">◌</span> : '📤'}
-                  <span>{sharing ? '生成中…' : '分享'}</span>
+                  <span className="hidden min-[400px]:inline">{sharing ? '生成中…' : '分享'}</span>
                 </button>
               )}
             </div>
