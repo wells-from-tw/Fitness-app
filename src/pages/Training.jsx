@@ -674,28 +674,28 @@ function ManualForm({ profile, onAdd }) {
         </div>
         <div className="flex flex-col gap-1.5">
           {sets.map((s, i) => (
-            <div key={i} className="flex items-center gap-2">
+            <div key={i} className="flex items-center gap-2 min-w-0">
               <span className="text-xs text-gray-400 w-8 shrink-0">第{i + 1}組</span>
-              <div className="flex-1 flex items-center gap-1">
+              <div className="flex-1 min-w-0 flex items-center gap-1">
                 <input
                   type="number" min="1" value={s.reps}
                   onChange={e => updateSet(i, 'reps', e.target.value)}
                   placeholder="次數"
-                  className="flex-1 border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-200"
+                  className="min-w-0 w-0 flex-1 border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-200"
                 />
-                <span className="text-xs text-gray-400">次</span>
+                <span className="text-xs text-gray-400 shrink-0">次</span>
               </div>
-              <div className="flex-1 flex items-center gap-1">
+              <div className="flex-1 min-w-0 flex items-center gap-1">
                 <input
                   type="number" min="0" step="0.5" value={s.weight}
                   onChange={e => updateSet(i, 'weight', e.target.value)}
                   placeholder="重量"
-                  className="flex-1 border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-200"
+                  className="min-w-0 w-0 flex-1 border border-gray-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] dark:text-gray-100 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-200"
                 />
-                <span className="text-xs text-gray-400">kg</span>
+                <span className="text-xs text-gray-400 shrink-0">kg</span>
               </div>
               {sets.length > 1 && (
-                <button onClick={() => removeSet(i)} className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
+                <button onClick={() => removeSet(i)} className="text-gray-300 hover:text-red-400 text-lg leading-none shrink-0">×</button>
               )}
             </div>
           ))}
