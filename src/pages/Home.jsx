@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import useDayLog from '../hooks/useDayLog';
 import CalorieRing from '../components/CalorieRing';
 import MacroBar from '../components/MacroBar';
@@ -7,7 +7,7 @@ import AddFoodModal from '../components/AddFoodModal';
 import WeightCard from '../components/WeightCard';
 import WaterCard from '../components/WaterCard';
 import ExerciseCard from '../components/ExerciseCard';
-import { getTodayKey, loadWeightLog, loadWaterLog, loadExerciseLog, loadDayData, loadWaterGoal, loadAllDays, loadGoals } from '../utils/storage';
+import { loadWeightLog, loadWaterLog, loadExerciseLog, loadDayData, loadWaterGoal, loadAllDays, loadGoals } from '../utils/storage';
 import { getDailySummary, getMealSuggestion, getAiConsultation } from '../utils/ai';
 import { generateShareCard } from '../utils/shareCard';
 import SharePreviewModal from '../components/SharePreviewModal';
@@ -21,9 +21,14 @@ function getWeekKey() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-function getYesterdayKey() {
+function dateForOffset(offset) {
   const d = new Date();
-  d.setDate(d.getDate() - 1);
+  d.setDate(d.getDate() + offset);
+  return d;
+}
+
+function keyForOffset(offset) {
+  const d = dateForOffset(offset);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
@@ -32,17 +37,26 @@ function formatDate(d) {
   return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日（週${days[d.getDay()]}）`;
 }
 
+const MAX_BACKFILL_DAYS = 30;
+
 export default function Home() {
-  const { dayData, goals, totals, addFood, removeFood, copyMeals } = useDayLog();
-  const [yesterdayMeals] = useState(() => loadDayData(getYesterdayKey()).meals);
+  // 0 = today, negative = past days (backfill forgotten entries)
+  const [offset, setOffset] = useState(0);
+  const dateKey  = keyForOffset(offset);
+  const isToday  = offset === 0;
+
+  const { dayData, goals, totals, addFood, removeFood, copyMeals } = useDayLog(dateKey);
+  const yesterdayMeals = useMemo(() => loadDayData(keyForOffset(offset - 1)).meals, [offset]);
   const [modal, setModal]     = useState(null);
-  const dateKey               = getTodayKey();
   const weekKey               = getWeekKey();
   const [weight, setWeight]   = useState(() => loadWeightLog()[weekKey] ?? null);
   const initialCups           = loadWaterLog()[dateKey] ?? 0;
   const [burned, setBurned]   = useState(() =>
     loadExerciseLog(dateKey).reduce((s, e) => s + e.calories, 0)
   );
+  useEffect(() => {
+    setBurned(loadExerciseLog(dateKey).reduce((s, e) => s + e.calories, 0));
+  }, [dateKey]);
   const [waterGoal] = useState(() => loadWaterGoal());
   const [summaryModal,    setSummaryModal]    = useState(null);
   const [suggestionModal, setSuggestionModal] = useState(null);
@@ -55,9 +69,9 @@ export default function Home() {
     if (sharing) return;
     setSharing(true);
     try {
-      const today = new Date();
+      const shareDate = dateForOffset(offset);
       const days = ['日','一','二','三','四','五','六'];
-      const dateStr = `${today.getMonth()+1}月${today.getDate()}日（週${days[today.getDay()]}）`;
+      const dateStr = `${shareDate.getMonth()+1}月${shareDate.getDate()}日（週${days[shareDate.getDay()]}）`;
       const waterCups = loadWaterLog()[dateKey] ?? 0;
 
       const dataUrl = await generateShareCard({
@@ -86,7 +100,31 @@ export default function Home() {
         <div className="max-w-lg mx-auto px-5 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">Fitness</h1>
-            <p className="text-[11px] text-gray-400 mt-0.5 tracking-wide">{formatDate(new Date())}</p>
+            <div className="flex items-center gap-1 mt-0.5">
+              <button
+                onClick={() => setOffset(o => Math.max(o - 1, -MAX_BACKFILL_DAYS))}
+                disabled={offset <= -MAX_BACKFILL_DAYS}
+                className="w-5 h-5 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-[#1e1e1e] disabled:opacity-25 transition-colors leading-none"
+                aria-label="前一天"
+              >‹</button>
+              <p className={`text-[11px] tracking-wide ${isToday ? 'text-gray-400' : 'text-amber-500 font-semibold'}`}>
+                {formatDate(dateForOffset(offset))}{!isToday && '（補記）'}
+              </p>
+              <button
+                onClick={() => setOffset(o => Math.min(o + 1, 0))}
+                disabled={isToday}
+                className="w-5 h-5 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-[#1e1e1e] disabled:opacity-25 transition-colors leading-none"
+                aria-label="後一天"
+              >›</button>
+              {!isToday && (
+                <button
+                  onClick={() => setOffset(0)}
+                  className="text-[11px] text-blue-500 font-semibold px-1.5 py-0.5 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                >
+                  回到今天
+                </button>
+              )}
+            </div>
           </div>
           <div className="text-right">
             <p className="text-[11px] text-gray-400 tracking-widest uppercase">目標</p>
@@ -111,11 +149,11 @@ export default function Home() {
           onSaved={kg => setWeight(kg)}
         />
 
-        {/* Water */}
-        <WaterCard dateKey={dateKey} initialCups={initialCups} goal={waterGoal} />
+        {/* Water — key remounts the card when browsing another day */}
+        <WaterCard key={`water-${dateKey}`} dateKey={dateKey} initialCups={initialCups} goal={waterGoal} />
 
         {/* Exercise */}
-        <ExerciseCard dateKey={dateKey} onBurnedChange={setBurned} />
+        <ExerciseCard key={`exercise-${dateKey}`} dateKey={dateKey} onBurnedChange={setBurned} />
 
         {/* Macros */}
         <div className="bg-white dark:bg-[#111] rounded-2xl border border-gray-100 dark:border-[#1e1e1e] p-5">
@@ -125,7 +163,7 @@ export default function Home() {
 
         {/* Meals */}
         <div>
-          <h2 className="text-[11px] text-gray-400 uppercase tracking-widest mb-3 px-1">今日餐點</h2>
+          <h2 className="text-[11px] text-gray-400 uppercase tracking-widest mb-3 px-1">{isToday ? '今日餐點' : '當日餐點'}</h2>
           <MealSection
             meals={dayData.meals}
             onRemove={removeFood}

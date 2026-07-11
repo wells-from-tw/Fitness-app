@@ -77,9 +77,13 @@ export default function Settings() {
     'wisefitness_usda_key', 'wisefitness_onboarded',
   ];
 
+  // API 金鑰不隨備份匯出：備份檔常被存到雲端或轉傳，明文金鑰會外洩。
+  // 匯入仍接受舊版含金鑰的備份檔（ALL_KEYS 保留這兩個 key）。
+  const SECRET_KEYS = ['wisefitness_api_key', 'wisefitness_usda_key'];
+
   function handleExportJSON() {
     const data = {};
-    ALL_KEYS.forEach(key => {
+    ALL_KEYS.filter(key => !SECRET_KEYS.includes(key)).forEach(key => {
       const val = localStorage.getItem(key);
       if (val) {
         try { data[key] = JSON.parse(val); } catch { data[key] = val; }
@@ -378,7 +382,7 @@ export default function Settings() {
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">資料管理</h2>
           </div>
           <p className="text-xs text-gray-400 mb-4">
-            JSON 備份包含所有資料可完整還原；CSV 適合匯入 Excel 分析。
+            JSON 備份包含所有記錄可完整還原（基於安全考量不含 API Key，還原後請重新輸入）；CSV 適合匯入 Excel 分析。
           </p>
 
           {/* JSON backup/restore */}
