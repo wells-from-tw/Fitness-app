@@ -255,7 +255,7 @@ export default function History() {
                 className="ml-auto text-gray-400 hover:text-gray-600 text-2xl leading-none"
               >×</button>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{weekSummary}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">{weekSummary}</p>
           </div>
         </div>
       )}

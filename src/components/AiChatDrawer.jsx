@@ -150,7 +150,7 @@ export default function AiChatDrawer({ mode, context, onConfirmExercises, onConf
           {messages.map((msg, i) => (
             <div key={i} className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
               {/* Chat bubble */}
-              <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+              <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
                 msg.role === 'user'
                   ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-br-sm'
                   : 'bg-gray-100 dark:bg-[#1e1e1e] text-gray-800 dark:text-gray-200 rounded-bl-sm'

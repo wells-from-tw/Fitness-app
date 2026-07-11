@@ -293,7 +293,7 @@ export default function Home() {
                 className="ml-auto text-gray-400 hover:text-gray-600 text-2xl leading-none"
               >×</button>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{suggestionModal}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">{suggestionModal}</p>
           </div>
         </div>
       )}
@@ -319,7 +319,7 @@ export default function Home() {
                 className="ml-auto text-gray-400 hover:text-gray-600 text-2xl leading-none"
               >×</button>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{summaryModal}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">{summaryModal}</p>
           </div>
         </div>
       )}
@@ -424,7 +424,7 @@ function ConsultModal({ goals, onClose }) {
               <div className="self-end bg-blue-500 text-white text-sm rounded-2xl rounded-br-sm px-4 py-2.5 max-w-[85%]">
                 {m.q}
               </div>
-              <div className="self-start bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-2xl rounded-bl-sm px-4 py-2.5 max-w-[90%] leading-relaxed whitespace-pre-wrap">
+              <div className="self-start bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-2xl rounded-bl-sm px-4 py-2.5 max-w-[90%] leading-relaxed whitespace-pre-wrap break-words">
                 {m.a}
               </div>
             </div>
