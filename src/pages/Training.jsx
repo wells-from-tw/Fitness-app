@@ -1,27 +1,11 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { loadExerciseLog, saveExerciseLog, loadAllExercise, loadProfile, getTodayKey, loadTrainingPrefs } from '../utils/storage';
-import { EXERCISES, CATEGORIES, MUSCLE_LABELS, calcMuscleIntensities, intensityColor, estimateCalories } from '../data/exercises';
-import { matchCompendium } from '../data/compendium';
+import { EXERCISES, CATEGORIES, MUSCLE_LABELS, calcMuscleIntensities, intensityColor, estimateCalories, matchExercise as matchExerciseInDb } from '../data/exercises';
 import { generateTrainingCard } from '../utils/shareCard';
 import { parseWorkoutPlan } from '../utils/ai';
 import MuscleHeatmap from '../components/MuscleHeatmap';
 import SharePreviewModal from '../components/SharePreviewModal';
 import AiChatDrawer from '../components/AiChatDrawer';
-
-// 嘗試將使用者輸入的動作名稱對應回資料庫，帶出肌群資訊（讓人體熱力圖能正確顯示）
-// 1. 先比對健身房肌力訓練動作庫（含詳細肌群分區）
-// 2. 找不到的話，退回 Compendium of Physical Activities 延伸清單
-//    （球類、武術、戶外運動、日常活動等較準確的 MET 值與粗略肌群）
-function matchExerciseInDb(name) {
-  const n = name.trim().toLowerCase();
-  if (!n) return null;
-  return (
-    EXERCISES.find(e => e.name.toLowerCase() === n) ||
-    EXERCISES.find(e => n.includes(e.name.toLowerCase()) || e.name.toLowerCase().includes(n)) ||
-    matchCompendium(n) ||
-    null
-  );
-}
 
 function offsetToKey(offset) {
   const d = new Date();
@@ -624,7 +608,10 @@ function ManualForm({ profile, onAdd }) {
   const matched = matchExerciseInDb(name);
   const MET = matched?.met ?? 5.0;
   const type = matched?.type ?? 'strength';
-  const estimated = duration
+  // Estimate from duration AND/OR set data — sets alone are enough
+  // (estimateCalories derives a duration of ~3.5 min per set when blank)
+  const hasSetData = type !== 'cardio' && sets.some(s => Number(s.reps) > 0);
+  const estimated = (duration || hasSetData)
     ? estimateCalories({ met: MET, weightKg, durationMin: Number(duration) || 0, sets, type })
     : null;
 

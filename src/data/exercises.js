@@ -4,6 +4,7 @@
  * Muscle groups: chest, shoulders, biceps, triceps, forearms,
  *   core, lats, upper_back, lower_back, glutes, quads, hamstrings, calves
  */
+import { matchCompendium } from './compendium.js';
 
 export const MUSCLE_LABELS = {
   chest:      '胸',
@@ -439,28 +440,157 @@ export const EXERCISES = [
 ];
 
 /**
+ * Common synonyms / alternate names (incl. English and 大陸用語) keyed by
+ * exercise id. Used by matchExercise() so freeform names like 滑輪下拉、
+ * 繩索下壓、臀橋、bench press still resolve to the right entry — which is
+ * what drives the muscle heatmap and the MET value for calorie estimates.
+ */
+const EXERCISE_ALIASES = {
+  // 胸
+  bench_press:      '槓鈴臥推,平板臥推,平板推舉,卧推,bench press',
+  incline_press:    '上斜胸推,上胸推,incline press,incline bench',
+  decline_press:    '下斜胸推,decline press',
+  dumbbell_fly:     '飛鳥,平板飛鳥,dumbbell fly,fly',
+  pushup:           '俯臥撑,伏立挺身,push up,pushup',
+  dips:             '雙槓,撐體,臂屈伸,dips,dip',
+  cable_crossover:  '滑輪夾胸,繩索交叉,夾胸,cable crossover,cable fly',
+  db_bench_press:   '啞鈴平板臥推,dumbbell bench press,dumbbell press',
+  pec_deck:         '蝴蝶機,夾胸機,pec deck',
+  // 背
+  pullup:           '引體,拉單槓,單槓,pull up,pullup,chin up',
+  lat_pulldown:     '滑輪下拉,高位下拉,坐姿下拉,背闊下拉,lat pulldown,pulldown',
+  barbell_row:      '俯身划船,barbell row,bent over row',
+  dumbbell_row:     '單臂划船,單手划船,dumbbell row',
+  deadlift:         '硬拉,傳統硬舉,deadlift',
+  cable_row:        '滑輪划船,坐姿滑輪划船,seated row,cable row',
+  tbar_row:         'T槓,T-bar row,t bar row',
+  face_pull:        'face pull,臉部拉引,面拉',
+  good_morning:     'good morning,早安式',
+  rear_delt_fly:    '反向飛鳥,後三角飛鳥,reverse fly,rear delt fly',
+  // 肩
+  overhead_press:   '推舉,肩上推舉,軍事推舉,站姿肩推,槓鈴肩推,overhead press,ohp,military press',
+  db_shoulder_press:'啞鈴推舉,坐姿啞鈴肩推,dumbbell shoulder press',
+  lateral_raise:    '啞鈴側平舉,側飛鳥,lateral raise,side raise',
+  front_raise:      '啞鈴前平舉,front raise',
+  arnold_press:     '阿諾推舉,arnold press',
+  shrugs:           '槓鈴聳肩,啞鈴聳肩,shrug,shrugs',
+  upright_row:      'upright row,直立上拉',
+  // 手臂
+  bicep_curl:       '彎舉,啞鈴彎舉,二頭肌彎舉,bicep curl,biceps curl,curl',
+  hammer_curl:      '錘式,槌式彎舉,hammer curl',
+  tricep_pushdown:  '繩索下壓,三頭肌下壓,滑輪下壓,下壓,tricep pushdown,pushdown',
+  overhead_tricep:  '三頭伸展,法式推舉,過頭伸展,overhead tricep extension,tricep extension',
+  closegrip_bench:  '窄握臥推,窄推,close grip bench',
+  reverse_curl:     'reverse curl,反向彎舉',
+  preacher_curl:    '牧師彎舉,preacher curl',
+  barbell_curl:     '槓鈴二頭彎舉,barbell curl',
+  concentration_curl: '集中二頭彎舉,concentration curl',
+  skull_crusher:    '仰臥三頭伸展,碎顱者,skull crusher',
+  // 腿
+  squat:            '槓鈴深蹲,背蹲舉,back squat,squat',
+  front_squat:      '前蹲舉,front squat',
+  bulgarian_squat:  '保加利亞蹲,分腿蹲,後腳抬高蹲,bulgarian split squat,split squat',
+  leg_press:        '腿舉,腿部推蹬,蹬腿,倒蹬,leg press',
+  lunge:            '弓箭步,前弓步,行走弓步,lunge,lunges',
+  leg_curl:         '腿後彎舉,腿部彎舉,leg curl',
+  leg_extension:    '腿部伸展,腿屈伸,leg extension',
+  calf_raise:       '提踵,舉踵,站姿提踵,calf raise',
+  rdl:              'rdl,羅馬尼亞硬拉,直腿硬舉,romanian deadlift',
+  sumo_deadlift:    '相撲硬拉,sumo deadlift',
+  step_up:          '登階,踏板,step up',
+  hip_thrust:       '臀橋,橋式,臀衝,hip thrust',
+  goblet_squat:     'goblet squat',
+  hack_squat:       'hack squat',
+  // 核心
+  situp:            'sit up,situp',
+  crunch:           '腹部捲曲,捲腹運動,crunch,crunches',
+  plank:            '平板支撐,棒式支撐,plank',
+  side_plank:       '側平板,側棒,side plank',
+  russian_twist:    '俄式轉體,russian twist',
+  hanging_leg_raise:'舉腿,懸垂舉腿,leg raise,hanging leg raise',
+  back_extension:   '羅馬椅,山羊挺身,back extension,hyperextension',
+  farmers_walk:     '農夫行走,提壺行走,farmer walk,farmers walk,farmer carry',
+};
+
+const EX_STRIP_RE = /[\s\d０-９.,，、。()（）×*~＋+kg公斤磅組次分鐘的-]/g;
+function normalizeExName(s) {
+  return String(s || '').toLowerCase().replace(EX_STRIP_RE, '');
+}
+
+// Longest common contiguous substring length (0 if < 2)
+function commonSubstrLen(a, b) {
+  const maxLen = Math.min(a.length, b.length);
+  for (let len = maxLen; len >= 2; len--) {
+    for (let i = 0; i + len <= a.length; i++) {
+      if (b.includes(a.slice(i, i + len))) return len;
+    }
+  }
+  return 0;
+}
+
+/**
+ * Match a freeform exercise name to the database. Scored:
+ *   exact (name or alias) > containment (longer match wins) > shared
+ *   substring >= 2 chars. Falls back to the Compendium activity list
+ *   (球類/武術/戶外/日常活動) when nothing in EXERCISES fits.
+ */
+export function matchExercise(name) {
+  const n = normalizeExName(name);
+  if (!n) return null;
+
+  let best = null;
+  let bestScore = 0;
+  for (const e of EXERCISES) {
+    const candidates = [e.name, ...(EXERCISE_ALIASES[e.id]?.split(',') ?? [])]
+      .map(normalizeExName)
+      .filter(Boolean);
+    for (const c of candidates) {
+      let score = 0;
+      if (c === n)                          score = 1000;
+      else if (n.includes(c))               score = 100 + c.length * 2;
+      else if (c.includes(n) && n.length >= 2) score = 100 + n.length * 2;
+      else                                  score = commonSubstrLen(n, c);
+      if (score > bestScore) { bestScore = score; best = e; }
+    }
+  }
+  if (best) return best;
+  return matchCompendium(name);
+}
+
+/**
  * Estimate calories burned for an exercise.
  *
- * - Cardio (or strength with no sets): plain time-based formula
+ * - Cardio (or strength with no set data): time-based formula
  *     calories = MET × bodyweight(kg) × hours
  * - Strength with sets: the time-based baseline is scaled by an
- *   intensity multiplier derived from total tonnage (Σ reps×weight)
- *   relative to bodyweight, so changing reps, sets, or weight all
- *   move the result — not just duration.
- *     intensity = clamp(0.6 .. 2.0, 0.8 + totalVolume / (bodyweight × 50))
- *     calories  = base × intensity
+ *   intensity multiplier derived from total tonnage (Σ reps×effective
+ *   weight) relative to bodyweight, so changing reps, sets, or weight
+ *   ALL move the result:
+ *     · no duration entered → estimated as 3.5 min per set (work + rest)
+ *     · empty/0 weight (bodyweight moves like 伏地挺身/引體向上) counts
+ *       as ~60% of bodyweight per rep, so reps still matter
+ *     · intensity = min(3.0, 0.75 + totalVolume / (bodyweight × 60))
+ *       — the cap is high enough that normal sessions never clip
  */
 export function estimateCalories({ met = 5, weightKg = 65, durationMin = 0, sets = [], type = 'strength' }) {
-  const hours = (Number(durationMin) || 0) / 60;
-  const base  = (met || 5) * weightKg * hours;
+  const validSets = (sets || []).filter(s => (Number(s.reps) || 0) > 0);
 
-  if (type === 'cardio' || !sets || sets.length === 0) {
+  let mins = Number(durationMin) || 0;
+  if (type !== 'cardio' && mins === 0 && validSets.length > 0) {
+    mins = validSets.length * 3.5;
+  }
+  const base = (met || 5) * weightKg * (mins / 60);
+
+  if (type === 'cardio' || validSets.length === 0) {
     return Math.round(base);
   }
 
-  const totalVolume = sets.reduce((s, set) => s + (Number(set.reps) || 0) * (Number(set.weight) || 0), 0);
-  const volumeFactor = totalVolume / (weightKg * 50);
-  const intensity = Math.min(2, Math.max(0.6, 0.8 + volumeFactor));
+  const totalVolume = validSets.reduce((sum, set) => {
+    const reps = Number(set.reps) || 0;
+    const w = Number(set.weight) || 0;
+    return sum + reps * (w > 0 ? w : weightKg * 0.6);
+  }, 0);
+  const intensity = Math.min(3, 0.75 + totalVolume / (weightKg * 60));
   return Math.round(base * intensity);
 }
 
