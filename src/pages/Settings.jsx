@@ -73,6 +73,8 @@ export default function Settings() {
     'wisefitness_exercise', 'wisefitness_water', 'wisefitness_profile',
     'wisefitness_favs', 'wisefitness_api_key', 'wisefitness_weight_goal',
     'wisefitness_meal_split', 'wisefitness_water_goal',
+    'wisefitness_training_prefs', 'wisefitness_barcode_cache',
+    'wisefitness_usda_key', 'wisefitness_onboarded',
   ];
 
   function handleExportJSON() {

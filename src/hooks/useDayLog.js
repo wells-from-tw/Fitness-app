@@ -2,7 +2,11 @@ import { useState, useCallback, useEffect } from 'react';
 import { getTodayKey, loadDayData, saveDayData, loadGoals } from '../utils/storage';
 
 export default function useDayLog() {
-  const dateKey = getTodayKey();
+  // Capture once per session: if the app stays open past midnight, saves must
+  // keep going to the day this data was loaded from (App.jsx reloads the page
+  // when the date flips). Recomputing per render would write yesterday's
+  // meals into today's key.
+  const [dateKey] = useState(() => getTodayKey());
   const [goals, setGoals]     = useState(() => loadGoals());
   const [dayData, setDayData] = useState(() => loadDayData(dateKey));
 
